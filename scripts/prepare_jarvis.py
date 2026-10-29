@@ -430,6 +430,104 @@ m = m.replace('''            inputType = InputType.TYPE_CLASS_NUMBER
             setHintTextColor(Color.parseColor("#7890A5"))''', 1)
 main_path.write_text(m, encoding="utf-8")
 
+# ── Minimal sherpa-onnx Android wrappers matching the pinned v2.0.1 native runtime.
+sherpa_api_dir = root / "app/src/main/java/com/k2fsa/sherpa/onnx"
+sherpa_api_dir.mkdir(parents=True, exist_ok=True)
+(sherpa_api_dir / "SpeakerEmbeddingExtractorConfig.kt").write_text(r"""package com.k2fsa.sherpa.onnx
+
+data class SpeakerEmbeddingExtractorConfig(
+    val model: String = "",
+    var numThreads: Int = 1,
+    var debug: Boolean = false,
+    var provider: String = "cpu",
+)
+""", encoding="utf-8")
+(sherpa_api_dir / "OnlineStream.kt").write_text(r"""package com.k2fsa.sherpa.onnx
+
+class OnlineStream(var ptr: Long = 0) {
+    init {
+        require(ptr != 0L) { "Failed to create native OnlineStream" }
+    }
+
+    fun acceptWaveform(samples: FloatArray, sampleRate: Int) =
+        acceptWaveform(ptr, samples, sampleRate)
+
+    fun inputFinished() = inputFinished(ptr)
+
+    protected fun finalize() {
+        if (ptr != 0L) {
+            delete(ptr)
+            ptr = 0
+        }
+    }
+
+    fun release() = finalize()
+
+    private external fun acceptWaveform(ptr: Long, samples: FloatArray, sampleRate: Int)
+    private external fun inputFinished(ptr: Long)
+    private external fun delete(ptr: Long)
+
+    companion object {
+        init {
+            System.loadLibrary("sherpa-onnx-jni")
+        }
+    }
+}
+""", encoding="utf-8")
+(sherpa_api_dir / "Speaker.kt").write_text(r"""package com.k2fsa.sherpa.onnx
+
+import android.content.res.AssetManager
+
+class SpeakerEmbeddingExtractor(
+    assetManager: AssetManager? = null,
+    config: SpeakerEmbeddingExtractorConfig,
+) {
+    private var ptr: Long
+
+    init {
+        ptr = if (assetManager != null) {
+            newFromAsset(assetManager, config)
+        } else {
+            newFromFile(config)
+        }
+        require(ptr != 0L) {
+            "Invalid SpeakerEmbeddingExtractorConfig: failed to create native SpeakerEmbeddingExtractor"
+        }
+    }
+
+    protected fun finalize() {
+        if (ptr != 0L) {
+            delete(ptr)
+            ptr = 0
+        }
+    }
+
+    fun release() = finalize()
+
+    fun createStream(): OnlineStream = OnlineStream(createStream(ptr))
+    fun isReady(stream: OnlineStream) = isReady(ptr, stream.ptr)
+    fun compute(stream: OnlineStream) = compute(ptr, stream.ptr)
+    fun dim() = dim(ptr)
+
+    private external fun newFromAsset(
+        assetManager: AssetManager,
+        config: SpeakerEmbeddingExtractorConfig,
+    ): Long
+    private external fun newFromFile(config: SpeakerEmbeddingExtractorConfig): Long
+    private external fun delete(ptr: Long)
+    private external fun createStream(ptr: Long): Long
+    private external fun isReady(ptr: Long, streamPtr: Long): Boolean
+    private external fun compute(ptr: Long, streamPtr: Long): FloatArray
+    private external fun dim(ptr: Long): Int
+
+    companion object {
+        init {
+            System.loadLibrary("sherpa-onnx-jni")
+        }
+    }
+}
+""", encoding="utf-8")
+
 # ── Owner-only voice identity (offline speaker embeddings; no raw audio is stored).
 owner_voice = r'''package com.jarvis.personal
 
