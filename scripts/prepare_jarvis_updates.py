@@ -105,14 +105,18 @@ m = m.replace(
     1
 )
 
-auto_check_marker = "        setContentView(root)"
-if auto_check_marker not in m:
-    raise SystemExit("No se encontró setContentView(root) para activar la comprobación al abrir Jarvis.")
-m = m.replace(
-    auto_check_marker,
-    auto_check_marker + '\n        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ checkForUpdates(false) }, 2500)',
-    1
+import re
+
+auto_check_pattern = re.compile(
+    r'(?ms)(^    override fun onCreate\([^)]*\)\s*\{.*?)(^    \}\s*(?=\n\n    (?:private|override|protected|fun)\s))'
 )
+m, auto_check_count = auto_check_pattern.subn(
+    lambda match: match.group(1) + '        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ checkForUpdates(false) }, 2500)\n' + match.group(2),
+    m,
+    count=1
+)
+if auto_check_count != 1:
+    raise SystemExit("No se pudo añadir la comprobación automática al final de MainActivity.onCreate.")
 
 update_methods = r'''    private fun checkForUpdates(manual: Boolean) {
         val updatePrefs = getSharedPreferences("jarvis_updates", Context.MODE_PRIVATE)
