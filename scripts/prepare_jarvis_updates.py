@@ -37,6 +37,9 @@ android {
             getByName("release") {
                 signingConfig = signingConfigs.getByName("jarvisRelease")
             }
+            getByName("debug") {
+                signingConfig = signingConfigs.getByName("jarvisRelease")
+            }
         }
     }
 }
@@ -65,6 +68,9 @@ android {
         }
         buildTypes {
             release {
+                signingConfig signingConfigs.jarvisRelease
+            }
+            debug {
                 signingConfig signingConfigs.jarvisRelease
             }
         }
