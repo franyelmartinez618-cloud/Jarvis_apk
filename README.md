@@ -30,16 +30,28 @@ Android restringe el lanzamiento de otras aplicaciones desde servicios en segund
 
 La detección y el reconocimiento de voz están diseñados para funcionar localmente; Gemini requiere internet y una clave opcional. No se garantiza escucha continua cuando Android o MIUI detienen el servicio.
 
-## Descargar el APK
+## Actualizaciones desde el móvil
 
-1. Abre [la ejecución más reciente de “Construir APK de Jarvis”](https://github.com/franyelmartinez618-cloud/Jarvis_apk/actions/workflows/prepare-jarvis.yml).
-2. En la ejecución completada, baja hasta **Artifacts**.
+Jarvis consulta al abrirse si existe una versión posterior y vuelve a revisar como máximo cada 6 horas; también hay un botón **Buscar actualizaciones de Jarvis**. Si encuentra una versión publicada, puede descargar el APK y abrir el instalador de Android. **Android todavía te pedirá autorizar la instalación**; las apps normales no pueden sustituirse silenciosamente.
+
+Cada compilación de `main` puede publicar un GitHub Release permanente, pero solo cuando se configura la firma estable. Para activarla, crea una clave una sola vez en tu PC y guárdala fuera del repositorio:
+
+```powershell
+keytool -genkeypair -v -keystore jarvis-release.jks -alias jarvis -keyalg RSA -keysize 2048 -validity 10000
+[Convert]::ToBase64String([IO.File]::ReadAllBytes(".\jarvis-release.jks"))
+```
+
+En GitHub abre **Settings → Secrets and variables → Actions → New repository secret** y crea estos cuatro secretos: `JARVIS_KEYSTORE_BASE64` (pega la salida Base64 del segundo comando), `JARVIS_STORE_PASSWORD`, `JARVIS_KEY_ALIAS` (valor `jarvis`) y `JARVIS_KEY_PASSWORD`. No subas el archivo `.jks` ni las contraseñas al repositorio. Conserva ese mismo archivo de firma y su contraseña: si se pierden o cambian, Android rechazará las futuras actualizaciones sobre esa instalación.
+
+Hasta configurar esos secretos, Actions seguirá generando el APK de depuración como artefacto temporal de 7 días y no publicará un APK de actualización. La primera actualización desde una instalación antigua de depuración también puede requerir una reinstalación si su firma no coincide con la clave estable; no desinstales hasta tener claro que conservas cualquier configuración local importante.
+
+## Descargar el APK de prueba
+
+1. Abre [las ejecuciones de “Construir APK de Jarvis”](https://github.com/franyelmartinez618-cloud/Jarvis_apk/actions/workflows/prepare-jarvis.yml).
+2. En una ejecución completada, baja hasta **Artifacts**.
 3. Descarga **jarvis-apk** y extrae `app-debug.apk`.
-
-Los artefactos de Actions caducan después de 7 días. El APK actual es de depuración y todavía no se ha probado físicamente en un teléfono. Android exigirá que confirmes la instalación de un APK nuevo; una actualización instalada sobre la anterior requiere una firma de publicación persistente, que aún no está configurada.
-
 ## Código y compilación
 
-El proyecto Android base está en `jarvis-android.zip`. Durante la compilación, `scripts/prepare_jarvis.py` prepara la conversación, el reconocimiento local, la pantalla y el icono. El flujo de `.github/workflows/prepare-jarvis.yml` descarga el modelo español y compila el APK.
+El proyecto Android base está en `jarvis-android.zip`. Durante la compilación, `scripts/prepare_jarvis.py` prepara la conversación, el reconocimiento local, la pantalla y el icono; `scripts/prepare_jarvis_updates.py` agrega el verificador de versiones y la configuración de firma. El flujo de `.github/workflows/prepare-jarvis.yml` descarga los modelos y compila el APK.
 
 No guardes contraseñas, datos personales ni claves de API en el repositorio.
