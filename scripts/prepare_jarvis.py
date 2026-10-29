@@ -998,7 +998,19 @@ download_ui = r'''        root.addView(button("Configurar mi voz (necesario para
             downloadLocalBrain()
         }
         brainDownloadButton.isEnabled = !LocalBrain.isDownloaded(this)
-        root.addView(brainDownloadButton)'''
+        root.addView(brainDownloadButton)
+        if (!LocalBrain.isDownloaded(this) && !prefs().getBoolean("local_brain_setup_prompt_seen", false)) {
+            prefs().edit().putBoolean("local_brain_setup_prompt_seen", true).apply()
+            root.postDelayed({
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Preparar el cerebro local")
+                    .setMessage("Para conversar naturalmente sin enviar tus preguntas a la nube, Jarvis necesita descargar una sola vez su modelo local (aproximadamente 329 MB). El archivo queda guardado en este teléfono y no se vuelve a descargar por cada actualización. Recomendamos usar Wi-Fi para evitar consumir datos móviles.")
+                    .setPositiveButton("Descargar ahora") { _, _ -> downloadLocalBrain() }
+                    .setNegativeButton("Más tarde", null)
+                    .show()
+            }, 900)
+        }
+'''
 if download_marker not in m:
     raise SystemExit("No se encontró el botón de registro de voz para insertar el cerebro local")
 m = m.replace(download_marker, download_ui, 1)
