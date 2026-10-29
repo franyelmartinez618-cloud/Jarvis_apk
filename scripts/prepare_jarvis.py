@@ -444,7 +444,7 @@ if gradle_path is None:
 gradle_text = gradle_path.read_text(encoding="utf-8")
 vosk_dependency = "com.alphacephei:vosk-android"
 if vosk_dependency in gradle_text:
-    gradle_text = re.sub(r"(com\\.alphacephei:vosk-android:)[0-9.]+", r"\\g<1>0.3.75", gradle_text)
+    gradle_text = re.sub(r"(com\.alphacephei:vosk-android:)[0-9.]+", r"\g<1>0.3.75", gradle_text)
 else:
     if gradle_path.name.endswith(".kts"):
         dependency_line = '    implementation("com.alphacephei:vosk-android:0.3.75")'
