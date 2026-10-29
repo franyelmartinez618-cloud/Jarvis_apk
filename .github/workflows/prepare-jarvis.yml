@@ -1,0 +1,80 @@
+name: Preparar y compilar Jarvis
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'jarvis-android.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Extraer el proyecto y guardar el código en el repositorio
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f jarvis-android.zip ]; then
+            echo "::error::No se encontró jarvis-android.zip en la raíz del repositorio."
+            exit 1
+          fi
+
+          tmp_dir="$(mktemp -d)"
+          unzip -q jarvis-android.zip -d "$tmp_dir"
+          project="$tmp_dir/jarvis-android"
+
+          if [ ! -f "$project/app/src/main/AndroidManifest.xml" ] || [ ! -f "$project/.github/workflows/build-apk.yml" ]; then
+            echo "::error::El ZIP no tiene la estructura esperada de jarvis-android."
+            exit 1
+          fi
+
+          cp -a "$project/." .
+          rm -rf "$tmp_dir" jarvis-android.zip
+          rm -f .github/workflows/prepare-jarvis.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No hay cambios que guardar."
+          else
+            git commit -m "Add Jarvis Android project sources"
+            git push origin HEAD:main
+          fi
+
+      - name: Instalar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Descargar el modelo de voz Vosk
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/assets
+          curl -L --fail --retry 3 -o /tmp/vosk-model.zip https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
+          mkdir -p /tmp/vosk-model
+          unzip -q /tmp/vosk-model.zip -d /tmp/vosk-model
+          mv /tmp/vosk-model/vosk-model-small-en-us-0.15 app/src/main/assets/model-en
+
+      - name: Instalar Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Compilar el APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Guardar el APK para descargarlo
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
