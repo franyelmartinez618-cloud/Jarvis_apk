@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      JARVIS_SIGNING_READY: ${{ secrets.JARVIS_KEYSTORE_BASE64 != '' && secrets.JARVIS_STORE_PASSWORD != '' && secrets.JARVIS_KEY_ALIAS != '' && secrets.JARVIS_KEY_PASSWORD != '' }}
+      JARVIS_SIGNING_READY: ${{ secrets.JARVIS_KEYSTORE_BASE64 != '' }}
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
@@ -144,9 +144,9 @@ jobs:
         if: ${{ env.JARVIS_SIGNING_READY == 'true' }}
         env:
           ORG_GRADLE_PROJECT_jarvisStoreFile: ${{ runner.temp }}/jarvis-release.jks
-          ORG_GRADLE_PROJECT_jarvisStorePassword: ${{ secrets.JARVIS_STORE_PASSWORD }}
-          ORG_GRADLE_PROJECT_jarvisKeyAlias: ${{ secrets.JARVIS_KEY_ALIAS }}
-          ORG_GRADLE_PROJECT_jarvisKeyPassword: ${{ secrets.JARVIS_KEY_PASSWORD }}
+          ORG_GRADLE_PROJECT_jarvisStorePassword: JarvisKeystorePassword_2026
+          ORG_GRADLE_PROJECT_jarvisKeyAlias: jarvis
+          ORG_GRADLE_PROJECT_jarvisKeyPassword: JarvisKeystorePassword_2026
         shell: bash
         run: |
           set -euo pipefail
