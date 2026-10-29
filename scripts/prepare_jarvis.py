@@ -948,6 +948,7 @@ main_path = root / "app/src/main/java/com/jarvis/personal/MainActivity.kt"
 m = main_path.read_text(encoding="utf-8")
 package_line = "package com.jarvis.personal\n"
 required_main_imports = [
+    "import java.io.File",
     "import java.io.FileOutputStream",
     "import java.net.HttpURLConnection",
     "import java.net.URL",
@@ -990,8 +991,9 @@ download_ui = r'''        root.addView(button("Configurar mi voz (necesario para
         }
         brainDownloadButton.isEnabled = !LocalBrain.isDownloaded(this)
         root.addView(brainDownloadButton)'''
-if (!m.includes(download_marker)) throw new Error("No encontré el botón de registro de voz para insertar el cerebro local");
-m = m.replace(download_marker, download_ui, 1);
+if download_marker not in m:
+    raise SystemExit("No se encontró el botón de registro de voz para insertar el cerebro local")
+m = m.replace(download_marker, download_ui, 1)
 
 download_method = r'''    private fun downloadLocalBrain() {
         if (brainDownloadInProgress) return
@@ -1071,11 +1073,7 @@ download_method = r'''    private fun downloadLocalBrain() {
     }
 
     private fun refresh() {'''
-m = m.replace(
-    "    private fun refresh() {",
-    download_method,
-    1
-)
+m = m.replace("    private fun refresh() {", download_method, 1)
 m = m.replace(
     '        rows += (if (OwnerVoiceVerifier.isEnrolled(this)) "✓  " else "○  ") + "Voz del propietario registrada"',
     '        rows += (if (OwnerVoiceVerifier.isEnrolled(this)) "✓  " else "○  ") + "Voz del propietario registrada"' + chr(10) +
