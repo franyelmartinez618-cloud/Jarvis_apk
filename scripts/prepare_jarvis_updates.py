@@ -103,23 +103,11 @@ for required_import in required_imports:
     if required_import not in m:
         m = m.replace(package_line, package_line + required_import + "\n", 1)
 
-update_button_marker = "        root.addView(brainDownloadButton)"
+update_button_marker = "        root.addView(mainButton)"
 if update_button_marker not in m:
-    raise SystemExit("No se encontró el botón del cerebro local para añadir el acceso de actualización.")
-m = m.replace(
-    update_button_marker,
-    update_button_marker + '\n        root.addView(button("Buscar actualizaciones de Jarvis") { checkForUpdates(true) })' +
-    '\n        root.addView(button("Mantener Jarvis activo en segundo plano") { requestBackgroundReliability() })' +
-    '\n        root.addView(button("Activar control de pantalla (Accesibilidad)") {' +
-    '\n            AlertDialog.Builder(this)' +
-    '\n                .setTitle("Permitir control de pantalla")' +
-    '\n                .setMessage("Este permiso permite a Jarvis leer el texto visible y pulsar controles cuando tú se lo ordenes. Actívalo manualmente en Ajustes de Accesibilidad. Las acciones que puedan enviar, publicar, pagar o borrar requieren confirmación por voz.")' +
-    '\n                .setPositiveButton("Abrir ajustes") { _, _ -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }' +
-    '\n                .setNegativeButton("Cancelar", null)' +
-    '\n                .show()' +
-    '\n        })',
-    1
-)
+    raise SystemExit("No se encontró el botón principal de Jarvis para anclar el actualizador.")
+# Keep one visible primary action button. Update checks remain automatic on app launch.
+m = m.replace(update_button_marker, update_button_marker, 1)
 
 import re
 
