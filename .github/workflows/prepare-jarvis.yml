@@ -53,7 +53,7 @@ jobs:
           found_grammar = False
           for index, line in enumerate(lines):
               if "private const val GRAMMAR =" in line:
-                  lines[index] = String.raw`        private const val GRAMMAR = "[\"jarvis activa\", \"jarvis activate\", \"[unk]\"]"`
+                  lines[index] = r'        private const val GRAMMAR = "[\"jarvis activa\", \"jarvis activate\", \"[unk]\"]"'
                   found_grammar = True
                   break
           if not found_grammar:
