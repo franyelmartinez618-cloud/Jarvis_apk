@@ -1406,8 +1406,7 @@ accessibility_xml_dir.mkdir(parents=True, exist_ok=True)
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:notificationTimeout="100"
-    android:canRetrieveWindowContent="true"
-    android:description="@string/app_name" />
+    android:canRetrieveWindowContent="true" />
 ''', encoding="utf-8")
 
 manifest = root / "app/src/main/AndroidManifest.xml"
