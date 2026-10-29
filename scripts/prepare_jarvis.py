@@ -1274,7 +1274,6 @@ screen_methods = r'''    private suspend fun handleScreenCommand(raw: String): B
     }
 
 '''
-if (!service_text.includes("    private fun timeText(): String {")) throw new Error("No se encontró el punto de inserción de los comandos de pantalla.");
 service_text = service_text.replace("    private fun timeText(): String {", screen_methods + "    private fun timeText(): String {", 1);
 service_path.write_text(service_text, encoding="utf-8");
 
