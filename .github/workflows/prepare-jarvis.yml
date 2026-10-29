@@ -2,17 +2,19 @@ name: Construir APK de Jarvis
 
 on:
   push:
-    branches: [ main, "fix/jarvis-build-voice-foundation-20261029", "feat/jarvis-owner-voice-gate-20261029" ]
+    branches: [ main, "fix/jarvis-build-voice-foundation-20261029", "feat/jarvis-owner-voice-gate-20261029", "feat/jarvis-offline-brain-litertlm-20261029", "feat/jarvis-auto-updates-20261029" ]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     name: Compilar APK Android
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      JARVIS_SIGNING_READY: ${{ secrets.JARVIS_KEYSTORE_BASE64 != '' && secrets.JARVIS_STORE_PASSWORD != '' && secrets.JARVIS_KEY_ALIAS != '' && secrets.JARVIS_KEY_PASSWORD != '' }}
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
@@ -68,6 +70,7 @@ jobs:
           wake.write_text(text, encoding="utf-8")
           PY
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis.py" "$PROJECT"
+          python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_updates.py" "$PROJECT"
           echo "JARVIS_PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
       - name: Descargar modelo de español para activación offline
@@ -122,9 +125,44 @@ jobs:
         run: |
           set -euo pipefail
           cd "$JARVIS_PROJECT"
-          gradle --no-daemon --stacktrace assembleDebug
+          gradle --no-daemon --stacktrace -PjarvisVersionCode="$GITHUB_RUN_NUMBER" assembleDebug
           mkdir -p "$GITHUB_WORKSPACE/output"
           cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/output/app-debug.apk"
+
+      - name: Preparar firma estable para actualizaciones
+        if: ${{ env.JARVIS_SIGNING_READY == 'true' }}
+        env:
+          JARVIS_KEYSTORE_BASE64: ${{ secrets.JARVIS_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$JARVIS_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jarvis-release.jks"
+          test -s "$RUNNER_TEMP/jarvis-release.jks"
+          echo "Keystore estable preparado (el contenido no se imprime)."
+
+      - name: Compilar APK firmado para actualizar instalaciones existentes
+        if: ${{ env.JARVIS_SIGNING_READY == 'true' }}
+        env:
+          ORG_GRADLE_PROJECT_jarvisStoreFile: ${{ runner.temp }}/jarvis-release.jks
+          ORG_GRADLE_PROJECT_jarvisStorePassword: ${{ secrets.JARVIS_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_jarvisKeyAlias: ${{ secrets.JARVIS_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_jarvisKeyPassword: ${{ secrets.JARVIS_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$JARVIS_PROJECT"
+          gradle --no-daemon --stacktrace -PjarvisVersionCode="$GITHUB_RUN_NUMBER" assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/output/jarvis.apk"
+
+      - name: Publicar versión permanente para el actualizador
+        if: ${{ github.ref == 'refs/heads/main' && env.JARVIS_SIGNING_READY == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Jarvis v${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          files: output/jarvis.apk
+          generate_release_notes: true
 
       - name: Publicar APK descargable
         uses: actions/upload-artifact@v4
