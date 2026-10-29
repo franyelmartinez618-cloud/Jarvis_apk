@@ -106,12 +106,9 @@ jobs:
           test -s "$ASSET_DIR/jarvis-speaker.onnx"
 
           KOTLIN_DIR="$JARVIS_PROJECT/app/src/main/java/com/k2fsa/sherpa/onnx"
-          mkdir -p "$KOTLIN_DIR"
-          SOURCE_BASE="https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/v2.0.1/android/SherpaOnnxSpeakerIdentification/app/src/main/java/com/k2fsa/sherpa/onnx/speaker/identification"
           for source in Speaker.kt OnlineStream.kt SpeakerEmbeddingExtractorConfig.kt; do
-            curl --fail --location --retry 3 --retry-delay 2 \
-              "$SOURCE_BASE/$source" --output "$KOTLIN_DIR/$source"
             test -s "$KOTLIN_DIR/$source"
+            grep -q '^package com.k2fsa.sherpa.onnx' "$KOTLIN_DIR/$source"
           done
           echo "Se preparó el motor local de identificación de voz para ARM64."
 
