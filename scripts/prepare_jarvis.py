@@ -1147,3 +1147,289 @@ else:
 gradle_path.write_text(gradle_text, encoding='utf-8')
 
 print("Parche aplicado: voz del propietario, sesión persistente y cerebro local LiteRT-LM descargable.")
+
+# ── Opt-in Android accessibility controls for visible app UI.
+service_path = root / "app/src/main/java/com/jarvis/personal/JarvisService.kt"
+service_text = service_path.read_text(encoding="utf-8")
+for import_line in ("import android.net.Uri", "import java.net.URLEncoder", "import android.content.Intent"):
+    if import_line not in service_text:
+        service_text = service_text.replace("package com.jarvis.personal\n", "package com.jarvis.personal\n" + import_line + "\n", 1)
+
+if "private var pendingSensitiveUiTarget: String? = null" not in service_text:
+    service_text = replace_once(
+        service_text,
+        "    private var busy = false\n",
+        "    private var busy = false\n    private var pendingSensitiveUiTarget: String? = null\n",
+        "estado de confirmación de acciones de pantalla"
+    )
+service_text = replace_once(
+    service_text,
+    "is Cmd.Unknown -> respondNaturally(cmd.raw)",
+    "is Cmd.Unknown -> if (!handleScreenCommand(cmd.raw)) respondNaturally(cmd.raw)",
+    "despacho de órdenes a controles de pantalla"
+)
+service_text = replace_once(
+    service_text,
+    'Cmd.Cancel -> speak("Está bien.")',
+    'Cmd.Cancel -> { pendingSensitiveUiTarget = null; speak("Está bien.") }',
+    "cancelación de acción pendiente"
+)
+
+screen_methods = r'''    private suspend fun handleScreenCommand(raw: String): Boolean {
+        val cleaned = raw.trim()
+        val normalized = strip(raw)
+        val confirmPhrases = listOf("confirma accion", "confirmar accion", "confirmo la accion", "si confirma", "si, confirma", "confirmar")
+        if (pendingSensitiveUiTarget != null) {
+            if (normalized in confirmPhrases) {
+                val target = pendingSensitiveUiTarget ?: return true
+                pendingSensitiveUiTarget = null
+                val success = JarvisAccessibilityService.clickByText(target)
+                speak(if (success) "Acción confirmada. Pulsé " + target + "." else "No pude encontrar el control " + target + ". No se ejecutó la acción.")
+                return true
+            }
+            if (normalized in listOf("cancela accion", "cancelar accion", "no, cancelar", "no")) {
+                pendingSensitiveUiTarget = null
+                speak("Acción cancelada.")
+                return true
+            }
+            pendingSensitiveUiTarget = null
+        }
+
+        if (normalized in listOf("atras", "volver", "retrocede", "vuelve atras", "regresa")) {
+            if (!JarvisAccessibilityService.isConnected()) speak("Para controlar otras aplicaciones, activa el servicio de Accesibilidad de Jarvis desde su pantalla principal.")
+            else speak(if (JarvisAccessibilityService.navigate("back")) "Volviendo atrás." else "No pude volver atrás en esta pantalla.")
+            return true
+        }
+        if (normalized in listOf("inicio", "pantalla principal", "vuelve al inicio", "ir a inicio")) {
+            if (!JarvisAccessibilityService.isConnected()) speak("Activa primero el control de pantalla de Jarvis en los ajustes de Accesibilidad.")
+            else speak(if (JarvisAccessibilityService.navigate("home")) "Volviendo a la pantalla principal." else "Android no permitió ir al inicio.")
+            return true
+        }
+        if (normalized in listOf("muestra notificaciones", "abre notificaciones", "panel de notificaciones")) {
+            if (!JarvisAccessibilityService.isConnected()) speak("Activa primero el control de pantalla de Jarvis en los ajustes de Accesibilidad.")
+            else speak(if (JarvisAccessibilityService.navigate("notifications")) "Abriendo notificaciones." else "No pude abrir las notificaciones.")
+            return true
+        }
+        if (normalized in listOf("abre ajustes rapidos", "muestra ajustes rapidos", "panel rapido")) {
+            if (!JarvisAccessibilityService.isConnected()) speak("Activa primero el control de pantalla de Jarvis en los ajustes de Accesibilidad.")
+            else speak(if (JarvisAccessibilityService.navigate("quick_settings")) "Abriendo ajustes rápidos." else "No pude abrir los ajustes rápidos.")
+            return true
+        }
+        if (Regex("(baja|desplaza hacia abajo|desliza hacia abajo|scroll abajo|desplazate abajo)").containsMatchIn(normalized)) {
+            if (!JarvisAccessibilityService.isConnected()) speak("Activa primero el control de pantalla de Jarvis en los ajustes de Accesibilidad.")
+            else speak(if (JarvisAccessibilityService.scroll(true)) "Desplazando hacia abajo." else "No encontré una zona desplazable en esta pantalla.")
+            return true
+        }
+        if (Regex("(sube|desplaza hacia arriba|desliza hacia arriba|scroll arriba|desplazate arriba)").containsMatchIn(normalized)) {
+            if (!JarvisAccessibilityService.isConnected()) speak("Activa primero el control de pantalla de Jarvis en los ajustes de Accesibilidad.")
+            else speak(if (JarvisAccessibilityService.scroll(false)) "Desplazando hacia arriba." else "No encontré una zona desplazable en esta pantalla.")
+            return true
+        }
+        if (Regex("(lee la pantalla|que dice la pantalla|que hay en pantalla|describe esta pantalla|lee lo que aparece)").containsMatchIn(normalized)) {
+            val summary = JarvisAccessibilityService.readScreen()
+            speak(summary ?: "No tengo acceso al contenido de esta pantalla. Abre Jarvis y activa el servicio de Accesibilidad si deseas usar esta función.")
+            return true
+        }
+
+        val youtubeSearch = Regex("^(?:busca|buscar|buscame)\\s+(.+?)\\s+en\\s+youtube$", RegexOption.IGNORE_CASE).find(cleaned)
+        if (youtubeSearch != null) {
+            val query = youtubeSearch.groupValues[1].trim()
+            try {
+                val uri = Uri.parse("https://www.youtube.com/results?search_query=" + URLEncoder.encode(query, "UTF-8"))
+                startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                speak("Buscando en YouTube: " + query)
+            } catch (e: Exception) {
+                Log.e(TAG, "No pude abrir la búsqueda de YouTube", e)
+                speak("No pude abrir YouTube ahora mismo.")
+            }
+            return true
+        }
+
+        val clickMatch = Regex("^(?:toca|pulsa|presiona|haz clic en|selecciona|elige)(?:\\s+(?:el|la|los|las))?(?:\\s+(?:boton|botón|opcion|opción|enlace))?\\s+(.+)$", RegexOption.IGNORE_CASE).find(cleaned)
+        if (clickMatch != null) {
+            val target = clickMatch.groupValues[1].trim().trimEnd('.')
+            if (!JarvisAccessibilityService.isConnected()) {
+                speak("Para pulsar controles de otras aplicaciones, activa el servicio de Accesibilidad de Jarvis desde su pantalla principal.")
+                return true
+            }
+            val sensitive = Regex("\\b(enviar|send|publicar|postear|pagar|pago|comprar|eliminar|borrar|delete|transferir|confirmar compra)\\b").containsMatchIn(strip(target))
+            if (sensitive) {
+                pendingSensitiveUiTarget = target
+                speak("El control " + target + " podría enviar, publicar, pagar o borrar información. Si confirmas que quieres pulsarlo, di confirma acción. Para cancelar, di cancela.")
+                return true
+            }
+            val success = JarvisAccessibilityService.clickByText(target)
+            speak(if (success) "Listo. Pulsé " + target + "." else "No encontré un control visible llamado " + target + ". Dime el texto exacto que aparece en pantalla.")
+            return true
+        }
+
+        val typeMatch = Regex("^(?:escribe|teclea|introduce|ingresa)\\s+(.+)$", RegexOption.IGNORE_CASE).find(cleaned)
+        if (typeMatch != null) {
+            val value = typeMatch.groupValues[1].trim()
+            if (!JarvisAccessibilityService.isConnected()) speak("Para escribir dentro de otras aplicaciones, activa el servicio de Accesibilidad de Jarvis desde su pantalla principal.")
+            else speak(if (JarvisAccessibilityService.typeIntoFocusedField(value)) "Texto escrito en el campo activo." else "No encontré un campo de texto activo. Pulsa primero el campo donde quieres escribir.")
+            return true
+        }
+        return false
+    }
+
+'''
+if (!service_text.includes("    private fun timeText(): String {")) throw new Error("No se encontró el punto de inserción de los comandos de pantalla.");
+service_text = service_text.replace("    private fun timeText(): String {", screen_methods + "    private fun timeText(): String {", 1);
+service_path.write_text(service_text, encoding="utf-8");
+
+accessibility_service_path = root / "app/src/main/java/com/jarvis/personal/JarvisAccessibilityService.kt"
+accessibility_service_path.parent.mkdir(parents=True, exist_ok=True)
+accessibility_service_path.write_text(r'''package com.jarvis.personal
+
+import android.accessibilityservice.AccessibilityService
+import android.os.Bundle
+import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+
+/**
+ * Accesibilidad opcional controlada por la persona propietaria desde los ajustes de Android.
+ * No registra ni transmite eventos; solo procesa la pantalla cuando Jarvis recibe una orden.
+ */
+class JarvisAccessibilityService : AccessibilityService() {
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        current = this
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        // No guardamos texto, pulsaciones ni contenido de eventos.
+    }
+
+    override fun onInterrupt() {
+        // Android puede interrumpir temporalmente el servicio.
+    }
+
+    override fun onDestroy() {
+        if (current === this) current = null
+        super.onDestroy()
+    }
+
+    companion object {
+        @Volatile private var current: JarvisAccessibilityService? = null
+
+        fun isConnected(): Boolean = current != null
+
+        fun navigate(action: String): Boolean {
+            val service = current ?: return false
+            val globalAction = when (action) {
+                "back" -> AccessibilityService.GLOBAL_ACTION_BACK
+                "home" -> AccessibilityService.GLOBAL_ACTION_HOME
+                "notifications" -> AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
+                "quick_settings" -> AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
+                else -> return false
+            }
+            return try { service.performGlobalAction(globalAction) } catch (_: Exception) { false }
+        }
+
+        fun clickByText(query: String): Boolean {
+            val service = current ?: return false
+            val root = service.rootInActiveWindow ?: return false
+            return try {
+                val nodes = root.findAccessibilityNodeInfosByText(query)
+                for (node in nodes) {
+                    var candidate: AccessibilityNodeInfo? = node
+                    var depth = 0
+                    while (candidate != null && depth < 8) {
+                        if (candidate.isEnabled && candidate.isClickable &&
+                            candidate.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
+                        candidate = candidate.parent
+                        depth += 1
+                    }
+                    if (node.isEnabled && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
+                }
+                false
+            } catch (_: Exception) { false }
+        }
+
+        fun typeIntoFocusedField(value: String): Boolean {
+            val service = current ?: return false
+            val root = service.rootInActiveWindow ?: return false
+            return try {
+                val field = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                if (field == null || !field.isEditable || !field.isEnabled) return false
+                val args = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, value)
+                }
+                field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+            } catch (_: Exception) { false }
+        }
+
+        fun scroll(forward: Boolean): Boolean {
+            val root = current?.rootInActiveWindow ?: return false
+            val action = if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+            fun visit(node: AccessibilityNodeInfo?, depth: Int): Boolean {
+                if (node == null || depth > 14) return false
+                if (node.isScrollable && node.isEnabled && node.performAction(action)) return true
+                for (index in 0 until node.childCount) {
+                    val child = node.getChild(index) ?: continue
+                    if (visit(child, depth + 1)) return true
+                }
+                return false
+            }
+            return try { visit(root, 0) } catch (_: Exception) { false }
+        }
+
+        fun readScreen(): String? {
+            val root = current?.rootInActiveWindow ?: return null
+            val output = mutableListOf<String>()
+            fun visit(node: AccessibilityNodeInfo?, depth: Int) {
+                if (node == null || depth > 14 || output.size >= 45) return
+                if (node.isVisibleToUser) {
+                    val text = node.text?.toString()?.trim().orEmpty()
+                    val description = node.contentDescription?.toString()?.trim().orEmpty()
+                    if (text.isNotBlank()) output.add(text)
+                    else if (description.isNotBlank()) output.add(description)
+                }
+                for (index in 0 until node.childCount) {
+                    if (output.size >= 45) break
+                    visit(node.getChild(index), depth + 1)
+                }
+            }
+            return try {
+                visit(root, 0)
+                output.distinct().joinToString(". ").take(700).takeIf { it.isNotBlank() }
+            } catch (_: Exception) { null }
+        }
+    }
+}
+''', encoding="utf-8")
+
+accessibility_xml_dir = root / "app/src/main/res/xml"
+accessibility_xml_dir.mkdir(parents=True, exist_ok=True)
+(accessibility_xml_dir / "jarvis_accessibility_service.xml").write_text(r'''<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:notificationTimeout="100"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/app_name" />
+''', encoding="utf-8")
+
+manifest = root / "app/src/main/AndroidManifest.xml"
+xml = manifest.read_text(encoding="utf-8")
+if 'android:name=".JarvisAccessibilityService"' not in xml:
+    entry = r'''        <service
+            android:name=".JarvisAccessibilityService"
+            android:label="Control de pantalla de Jarvis"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/jarvis_accessibility_service" />
+        </service>
+'''
+    if "</application>" not in xml:
+        raise SystemExit("No se encontró el cierre application en AndroidManifest.xml")
+    xml = xml.replace("</application>", entry + "    </application>", 1)
+manifest.write_text(xml, encoding="utf-8")
+
+print("Añadido control de pantalla opcional mediante Accesibilidad de Android.")
