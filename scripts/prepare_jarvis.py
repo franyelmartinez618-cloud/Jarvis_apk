@@ -1117,7 +1117,7 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this)
             .setTitle("JARVIS · CONFIGURACIÓN INICIAL")
             .setMessage(
-                "JARVIS funciona en este teléfono y no envía tus conversaciones a Gemini ni a otra IA remota. Esta versión utiliza habilidades locales creadas para la aplicación; no es una IA general entrenada desde cero.\\n\\n" +
+                "JARVIS funciona en este teléfono y no envía tus conversaciones a Gemini ni a otra IA remota. Esta versión utiliza habilidades locales creadas para la aplicación; no es una IA general entrenada desde cero.\n\n" +
                 "Al continuar, Android te pedirá los permisos del micrófono y de las funciones opcionales, uno por uno. Después registrarás dos muestras cortas de tu voz."
             )
             .setPositiveButton("CONTINUAR Y DAR PERMISOS") { _, _ -> beginPermissionFlow() }
@@ -1223,7 +1223,7 @@ class MainActivity : Activity() {
         countdownActive = true
         var remaining = 3
         fun tick() {
-            status.text = "ACTUALIZACIÓN APLICADA · v" + current + "\\nREINICIANDO EN " + remaining + "..."
+            status.text = "ACTUALIZACIÓN APLICADA · v" + current + "\nREINICIANDO EN " + remaining + "..."
             mainButton.text = "REINICIO · " + remaining
             if (remaining > 1) {
                 remaining -= 1
