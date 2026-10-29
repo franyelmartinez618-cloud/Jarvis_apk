@@ -40,9 +40,11 @@ s = replace_once(s, "    private var busy = false\n", "    private var busy = fa
 
 conversation = r'''    /** Una activación abre varios turnos; no exige repetir la frase en cada orden. */
     private suspend fun conversation() {
-        updateNotification("Conversación activa: habla con Jarvis")
-        beep()
-        speak("A tus órdenes. Te escucho.")
+        if (!OwnerVoiceVerifier.isEnrolled(this)) {
+            updateNotification("Configura tu voz en Jarvis antes de usar la escucha personalizada")
+            return
+        }
+        updateNotification("Verificando la voz del propietario")
         delay(200)
         var turns = 0
         while (running && turns < 8) {
@@ -56,7 +58,7 @@ conversation = r'''    /** Una activación abre varios turnos; no exige repetir 
             if (command == Cmd.Cancel) break
             delay(250)
         }
-        if (turns == 0) speak("No te escuché. Cuando quieras, vuelve a decir Jarvis, activa.")
+        if (turns == 0) updateNotification("No se recibió una orden de voz autorizada")
         else if (turns >= 8) speak("Dejo la conversación en espera. Di Jarvis, activa para volver a hablar.")
     }
 
@@ -152,17 +154,29 @@ voice_and_ai = r'''    /** Reconoce las órdenes directamente con Vosk y el mode
                 recognizer = Recognizer(localModel, sampleRate.toFloat())
                 record.startRecording()
                 val buffer = ShortArray(4000)
+                val capturedAudio = ArrayList<Float>(sampleRate * 6)
                 val started = SystemClock.elapsedRealtime()
                 while (SystemClock.elapsedRealtime() - started < 12_000 && running) {
                     val count = record.read(buffer, 0, buffer.size)
                     if (count <= 0) { delay(20); continue }
+                    for (index in 0 until count) capturedAudio.add(buffer[index] / 32768.0f)
                     if (recognizer.acceptWaveForm(buffer, count)) {
                         val spoken = JSONObject(recognizer.getResult()).optString("text").trim()
-                        if (spoken.isNotBlank()) return@withContext spoken
+                        if (spoken.isNotBlank()) {
+                            val authorized = OwnerVoiceVerifier.matches(this@JarvisService, capturedAudio.toFloatArray())
+                            if (authorized) return@withContext spoken
+                            Log.i(TAG, "Voz no autorizada; la orden no se ejecutará")
+                            return@withContext null
+                        }
                     }
                 }
                 val finalText = JSONObject(recognizer.getFinalResult()).optString("text").trim()
-                finalText.ifBlank { null }
+                if (finalText.isBlank()) null else if (
+                    OwnerVoiceVerifier.matches(this@JarvisService, capturedAudio.toFloatArray())
+                ) finalText else {
+                    Log.i(TAG, "Voz final no autorizada; no responderé")
+                    null
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "El reconocimiento local falló", e)
                 null
@@ -324,6 +338,10 @@ m = m.replace('''        root.addView(countryInput)
         root.addView(button("Obtener clave opcional en Google AI Studio") {
             openSafely(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey")))
         })
+        root.addView(button("Configurar mi voz (necesario para usar Jarvis)") {
+            if (JarvisService.running) stopService(Intent(this, JarvisService::class.java))
+            openSafely(Intent(this, VoiceSetupActivity::class.java))
+        })
 ''', 1)
 m = m.replace('''        root.addView(TextView(this).apply {
             text = "\\nÓrdenes que entiende:\\n" +''', '''        root.addView(TextView(this).apply {
@@ -373,6 +391,7 @@ m = re.sub(r'(?ms)^    private fun refresh\(\) \{.*?^    \}\n\n    private fun s
         val battery = getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
         rows += (if (overlay) "✓  " else "○  ") + "Abrir apps desde segundo plano"
         rows += (if (battery) "✓  " else "○  ") + "Sin restricción de batería"
+        rows += (if (OwnerVoiceVerifier.isEnrolled(this)) "✓  " else "○  ") + "Voz del propietario registrada"
         rows += (if (prefs().getString(JarvisService.PREF_GEMINI_KEY, "").isNullOrBlank()) "○  " else "✓  ") + "IA online configurada"
         rows += ""
         rows += if (JarvisService.running) "● Jarvis está ESCUCHANDO" else "○ Jarvis está DETENIDO"
@@ -410,6 +429,304 @@ m = m.replace('''            inputType = InputType.TYPE_CLASS_NUMBER
             setTextColor(Color.parseColor("#E5F1FA"))
             setHintTextColor(Color.parseColor("#7890A5"))''', 1)
 main_path.write_text(m, encoding="utf-8")
+
+# ── Owner-only voice identity (offline speaker embeddings; no raw audio is stored).
+owner_voice = r'''package com.jarvis.personal
+
+import android.content.Context
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import android.os.SystemClock
+import android.util.Log
+import com.k2fsa.sherpa.onnx.OnlineStream
+import com.k2fsa.sherpa.onnx.SpeakerEmbeddingExtractor
+import com.k2fsa.sherpa.onnx.SpeakerEmbeddingExtractorConfig
+import org.json.JSONArray
+import kotlin.math.sqrt
+
+object OwnerVoiceVerifier {
+    private const val STORE = "jarvis_owner_voice"
+    private const val EMBEDDING_KEY = "owner_embedding_v1"
+    private const val SAMPLE_RATE = 16000
+    private const val MODEL_ASSET = "jarvis-speaker.onnx"
+    private const val MIN_VERIFY_SAMPLES = SAMPLE_RATE
+    // Initial threshold; it must be tuned against real recordings on the target phone.
+    private const val SIMILARITY_THRESHOLD = 0.74f
+    @Volatile private var extractor: SpeakerEmbeddingExtractor? = null
+
+    fun isEnrolled(context: Context): Boolean =
+        !context.getSharedPreferences(STORE, Context.MODE_PRIVATE).getString(EMBEDDING_KEY, null).isNullOrBlank()
+
+    fun clearEnrollment(context: Context) {
+        context.getSharedPreferences(STORE, Context.MODE_PRIVATE).edit().remove(EMBEDDING_KEY).apply()
+    }
+
+    private fun getExtractor(context: Context): SpeakerEmbeddingExtractor {
+        val current = extractor
+        if (current != null) return current
+        synchronized(this) {
+            val again = extractor
+            if (again != null) return again
+            val created = SpeakerEmbeddingExtractor(
+                assetManager = context.applicationContext.assets,
+                config = SpeakerEmbeddingExtractorConfig(
+                    model = MODEL_ASSET,
+                    numThreads = 2,
+                    debug = false,
+                    provider = "cpu"
+                )
+            )
+            extractor = created
+            return created
+        }
+    }
+
+    fun captureOwnerSample(context: Context): FloatArray? {
+        val minBuffer = AudioRecord.getMinBufferSize(
+            SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
+        )
+        if (minBuffer <= 0) return null
+        var recorder: AudioRecord? = null
+        return try {
+            recorder = AudioRecord(
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                maxOf(minBuffer, SAMPLE_RATE * 2)
+            )
+            if (recorder.state != AudioRecord.STATE_INITIALIZED) return null
+            recorder.startRecording()
+            val expected = SAMPLE_RATE * 5
+            val pcm = FloatArray(expected)
+            val buffer = ShortArray(1600)
+            var written = 0
+            val start = SystemClock.elapsedRealtime()
+            while (written < expected && SystemClock.elapsedRealtime() - start < 7000) {
+                val count = recorder.read(buffer, 0, minOf(buffer.size, expected - written))
+                if (count > 0) {
+                    for (i in 0 until count) pcm[written + i] = buffer[i] / 32768.0f
+                    written += count
+                }
+            }
+            if (written < SAMPLE_RATE * 3) null else embedding(context, pcm.copyOf(written))
+        } catch (e: Exception) {
+            Log.e("JarvisVoice", "No se pudo grabar la muestra de voz", e)
+            null
+        } finally {
+            try {
+                if (recorder?.recordingState == AudioRecord.RECORDSTATE_RECORDING) recorder?.stop()
+            } catch (_: Exception) {}
+            try { recorder?.release() } catch (_: Exception) {}
+        }
+    }
+
+    fun saveOwner(context: Context, recordings: List<FloatArray>): Boolean {
+        if (recordings.size < 3) return false
+        val dimensions = recordings.first().size
+        if (dimensions == 0 || recordings.any { it.size != dimensions }) return false
+        val mean = FloatArray(dimensions) { i ->
+            recordings.sumOf { it[i].toDouble() }.toFloat() / recordings.size
+        }
+        val normalized = normalize(mean) ?: return false
+        val json = JSONArray()
+        normalized.forEach { json.put(it.toDouble()) }
+        return context.getSharedPreferences(STORE, Context.MODE_PRIVATE)
+            .edit().putString(EMBEDDING_KEY, json.toString()).commit()
+    }
+
+    fun matches(context: Context, audio: FloatArray): Boolean {
+        if (audio.size < MIN_VERIFY_SAMPLES) return false
+        val raw = context.getSharedPreferences(STORE, Context.MODE_PRIVATE)
+            .getString(EMBEDDING_KEY, null) ?: return false
+        return try {
+            val json = JSONArray(raw)
+            val enrolled = FloatArray(json.length()) { json.getDouble(it).toFloat() }
+            val candidate = embedding(context, audio) ?: return false
+            if (candidate.size != enrolled.size) return false
+            val score = cosine(enrolled, candidate)
+            Log.d("JarvisVoice", "Coincidencia de voz: " + score)
+            score >= SIMILARITY_THRESHOLD
+        } catch (e: Exception) {
+            Log.e("JarvisVoice", "Falló la verificación local de voz", e)
+            false
+        }
+    }
+
+    private fun embedding(context: Context, audio: FloatArray): FloatArray? {
+        if (audio.size < SAMPLE_RATE) return null
+        var energy = 0.0
+        for (sample in audio) energy += sample * sample
+        val rms = sqrt(energy / audio.size).toFloat()
+        if (rms < 0.005f) return null
+        val model = getExtractor(context)
+        val stream: OnlineStream = model.createStream()
+        try {
+            var offset = 0
+            while (offset < audio.size) {
+                val end = minOf(offset + 1600, audio.size)
+                stream.acceptWaveform(audio.copyOfRange(offset, end), SAMPLE_RATE)
+                offset = end
+            }
+            stream.inputFinished()
+            if (!model.isReady(stream)) return null
+            return normalize(model.compute(stream))
+        } catch (e: Exception) {
+            Log.e("JarvisVoice", "No se pudo calcular la identidad de voz", e)
+            return null
+        } finally {
+            try { stream.release() } catch (_: Exception) {}
+        }
+    }
+
+    private fun normalize(input: FloatArray): FloatArray? {
+        var sum = 0.0
+        for (value in input) sum += value * value
+        val norm = sqrt(sum).toFloat()
+        if (norm <= 0.000001f) return null
+        return FloatArray(input.size) { input[it] / norm }
+    }
+
+    private fun cosine(a: FloatArray, b: FloatArray): Float {
+        var dot = 0.0
+        var na = 0.0
+        var nb = 0.0
+        for (i in a.indices) {
+            dot += a[i] * b[i]
+            na += a[i] * a[i]
+            nb += b[i] * b[i]
+        }
+        if (na <= 0.0 || nb <= 0.0) return -1f
+        return (dot / (sqrt(na) * sqrt(nb))).toFloat()
+    }
+}
+'''
+owner_path = root / "app/src/main/java/com/jarvis/personal/OwnerVoiceVerifier.kt"
+owner_path.write_text(owner_voice, encoding="utf-8")
+
+voice_setup = r'''package com.jarvis.personal
+
+import android.Manifest
+import android.app.Activity
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.os.Bundle
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+
+class VoiceSetupActivity : Activity() {
+    private val recordings = mutableListOf<FloatArray>()
+    private lateinit var status: TextView
+    private lateinit var recordButton: Button
+    private var busy = false
+    private val pad by lazy { (resources.displayMetrics.density * 20).toInt() }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window.statusBarColor = Color.parseColor("#07111D")
+        window.navigationBarColor = Color.parseColor("#07111D")
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(pad, pad * 2, pad, pad)
+            setBackgroundColor(Color.parseColor("#07111D"))
+        }
+        root.addView(TextView(this).apply {
+            text = "JARVIS · REGISTRO DE VOZ"
+            textSize = 22f
+            setTextColor(Color.parseColor("#D9F7FF"))
+        })
+        root.addView(TextView(this).apply {
+            text = "Graba tres muestras de tu voz. En cada una habla de forma natural durante cinco segundos. El procesamiento es local y solo se guarda una representación numérica de la voz; no se guardan las grabaciones."
+            textSize = 15f
+            setTextColor(Color.parseColor("#AFC5D6"))
+            setPadding(0, pad, 0, pad)
+        })
+        status = TextView(this).apply {
+            text = "Muestras registradas: 0 de 3"
+            textSize = 16f
+            setTextColor(Color.parseColor("#E5F1FA"))
+            setPadding(0, pad, 0, pad)
+        }
+        root.addView(status)
+        recordButton = button("Grabar muestra 1 de 3") { recordOne() }
+        root.addView(recordButton)
+        root.addView(button("Borrar registro de voz") {
+            OwnerVoiceVerifier.clearEnrollment(this)
+            recordings.clear()
+            status.text = "Registro borrado. Muestras: 0 de 3."
+            recordButton.isEnabled = true
+            recordButton.text = "Grabar muestra 1 de 3"
+            Toast.makeText(this, "Registro de voz borrado", Toast.LENGTH_SHORT).show()
+        })
+        root.addView(button("Volver") { finish() })
+        setContentView(root)
+    }
+
+    private fun recordOne() {
+        if (busy) return
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 75)
+            return
+        }
+        busy = true
+        recordButton.isEnabled = false
+        status.text = "Grabando muestra " + (recordings.size + 1) + " de 3. Habla ahora durante cinco segundos."
+        Thread {
+            val result = OwnerVoiceVerifier.captureOwnerSample(this)
+            runOnUiThread {
+                busy = false
+                recordButton.isEnabled = true
+                if (result == null) {
+                    status.text = "No pude obtener una muestra clara. Comprueba el micrófono y vuelve a intentarlo."
+                    recordButton.text = "Reintentar muestra " + (recordings.size + 1) + " de 3"
+                    return@runOnUiThread
+                }
+                recordings.add(result)
+                if (recordings.size < 3) {
+                    status.text = "Muestra guardada. Muestras registradas: " + recordings.size + " de 3. Continúa hablando con naturalidad."
+                    recordButton.text = "Grabar muestra " + (recordings.size + 1) + " de 3"
+                } else {
+                    val ok = OwnerVoiceVerifier.saveOwner(this, recordings)
+                    status.text = if (ok) "Voz del propietario registrada en este teléfono. Jarvis solo procesará órdenes que superen la comparación local." else "No pude guardar el registro. Intenta configurar la voz otra vez."
+                    recordButton.text = if (ok) "Voz registrada" else "Reintentar registro"
+                    recordButton.isEnabled = !ok
+                    if (ok) Toast.makeText(this, "Voz del propietario registrada", Toast.LENGTH_LONG).show()
+                }
+            }
+        }.start()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 75 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) recordOne()
+    }
+
+    private fun button(label: String, action: () -> Unit) = Button(this).apply {
+        text = label
+        isAllCaps = false
+        setTextColor(Color.parseColor("#E5F1FA"))
+        background = GradientDrawable().apply {
+            setColor(Color.parseColor("#172B3F"))
+            cornerRadius = 18f
+            setStroke(1, Color.parseColor("#2F4C63"))
+        }
+        setPadding(12, 4, 12, 4)
+        setOnClickListener { action() }
+    }
+}
+'''
+(root / "app/src/main/java/com/jarvis/personal/VoiceSetupActivity.kt").write_text(voice_setup, encoding="utf-8")
+
+# Register the onboarding screen in Android.
+manifest = root / "app/src/main/AndroidManifest.xml"
+xml = manifest.read_text(encoding="utf-8")
+if 'android:name=".VoiceSetupActivity"' not in xml:
+    xml = xml.replace("</application>", '        <activity android:name=".VoiceSetupActivity" android:exported="false" />\n    </application>', 1)
+manifest.write_text(xml, encoding="utf-8")
 
 # Internet is used only for the optional text conversation with Gemini.
 manifest = root / "app/src/main/AndroidManifest.xml"
