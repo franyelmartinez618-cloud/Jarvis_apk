@@ -2,7 +2,7 @@ name: Construir APK de Jarvis
 
 on:
   push:
-    branches: [ main, "fix/jarvis-build-voice-foundation-20261029", "feat/jarvis-owner-voice-gate-20261029", "feat/jarvis-offline-brain-litertlm-20261029", "feat/jarvis-auto-updates-20261029", "fix/jarvis-first-run-and-background-20261029", "feat/jarvis-accessibility-screen-controls-20261029" ]
+    branches: [ main, "fix/jarvis-build-voice-foundation-20261029", "feat/jarvis-owner-voice-gate-20261029", "feat/jarvis-offline-brain-litertlm-20261029", "feat/jarvis-auto-updates-20261029", "fix/jarvis-first-run-and-background-20261029", "feat/jarvis-accessibility-screen-controls-20261029", "feat/jarvis-private-offline-fast-start-20261029" ]
   workflow_dispatch:
 
 permissions:
