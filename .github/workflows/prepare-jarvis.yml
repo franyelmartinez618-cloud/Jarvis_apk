@@ -126,19 +126,9 @@ jobs:
 
           '''
           s = s[:start] + new_listen + s[end:]
-          old_conversation = '''    private suspend fun conversation() {
-                  updateNotification("Te escucho…")
-                  beep()
-                  speak("Dime.")
-                  delay(250)
-                  val heard = listen()
-                  if (heard == null) {
-                      speak("No te escuché.")
-                      return
-                  }
-                  Log.d(TAG, "Escuché: $heard")
-                  handle(Parser.parse(heard))
-              }'''
+          # Conversación breve de varios turnos, hasta que haya silencio.
+          start_conversation = s.index('    private suspend fun conversation() {')
+          end_conversation = s.index('    private suspend fun handle(cmd: Cmd) {', start_conversation)
           new_conversation = '''    private suspend fun conversation() {
                   updateNotification("Listo para escucharte…")
                   beep()
@@ -160,19 +150,20 @@ jobs:
                       turns += 1
                       delay(250)
                   }
-              }'''
-          if old_conversation not in s:
-              raise SystemExit("No encontré el bloque original de conversación en JarvisService.kt")
-          s = s.replace(old_conversation, new_conversation, 1)
-          old_unknown = '''            is Cmd.Unknown -> speak(
-                              "No entendí. Puedes decirme: llama a alguien, manda un WhatsApp o un SMS, o abre una aplicación."
-                          )'''
+              }
+
+          '''
+          s = s[:start_conversation] + new_conversation + s[end_conversation:]
+
+          # Las órdenes interpretadas por IA siempre pasan por las funciones que confirman acciones.
+          start_unknown = s.index('            is Cmd.Unknown -> speak(')
+          end_unknown = s.index('\\n        }\\n    }'.replace('\\\\n', '\\n'), start_unknown)
           new_unknown = '''            is Cmd.Unknown -> {
                               val answer = GeminiClient.interpret(this@JarvisService, cmd.raw)
                               when (answer?.type) {
                                   "call" -> if (answer.target.isNotBlank()) doCall(answer.target) else speak("¿A quién llamo, señor Frangel?")
-                                  "whatsapp" -> if (answer.target.isNotBlank()) doMessage(Cmd.Message(Via.WHATSAPP, answer.target, answer.message.ifBlank { null })) else speak("¿A quién le escribo?")
-                                  "sms" -> if (answer.target.isNotBlank()) doMessage(Cmd.Message(Via.SMS, answer.target, answer.message.ifBlank { null })) else speak("¿A quién le envío el SMS?")
+                                  "whatsapp" -> if (answer.target.isNotBlank()) doMessage(Cmd.Message(Via.WHATSAPP, answer.target, answer.message.takeIf { it.isNotBlank() })) else speak("¿A quién le escribo?")
+                                  "sms" -> if (answer.target.isNotBlank()) doMessage(Cmd.Message(Via.SMS, answer.target, answer.message.takeIf { it.isNotBlank() })) else speak("¿A quién le envío el SMS?")
                                   "open_app" -> if (answer.target.isNotBlank()) doOpenApp(answer.target) else speak("¿Qué aplicación abro?")
                                   "time" -> speak(timeText())
                                   "date" -> speak(dateText())
@@ -180,9 +171,39 @@ jobs:
                                   else -> speak("Para conversar con la IA necesitas guardar una clave gratuita de Google AI Studio y tener internet. Las órdenes básicas siguen disponibles offline.")
                               }
                           }'''
-          if old_unknown not in s:
-              raise SystemExit("No encontré el bloque de orden desconocida en JarvisService.kt")
-          s = s.replace(old_unknown, new_unknown, 1)
+          s = s[:start_unknown] + new_unknown + s[end_unknown:]
+
+          service.write_text(s, encoding="utf-8")
+
+          # Ajuste de clave AI en la pantalla de inicio, guardada solo en el almacenamiento local.
+          activity = root / "app/src/main/java/com/jarvis/personal/MainActivity.kt"
+          s = activity.read_text(encoding="utf-8")
+          activity_start = s.index('        root.addView(button("Guardar código de país")')
+          activity_end = s.index('        root.addView(button("▶  INICIAR JARVIS")', activity_start)
+          country_block = s[activity_start:activity_end]
+          extras = '''
+                  root.addView(TextView(this).apply {
+                      text = "\\nIA online opcional. Sin clave, Jarvis conserva las órdenes offline. Lo que envíes a la IA se comparte con Google; no dictes datos sensibles."
+                      setPadding(0, pad, 0, 0)
+                  })
+                  val apiKeyInput = EditText(this).apply {
+                      hint = "Clave gratuita de Google AI Studio (opcional)"
+                      inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                      setSingleLine(true)
+                      setText(prefs().getString("gemini_api_key", ""))
+                  }
+                  root.addView(apiKeyInput)
+                  root.addView(button("Guardar clave de IA solo en este teléfono") {
+                      prefs().edit().putString("gemini_api_key", apiKeyInput.text.toString().trim()).apply()
+                      Toast.makeText(this, "Clave guardada en este teléfono.", Toast.LENGTH_LONG).show()
+                  })
+                  root.addView(button("Obtener clave gratuita de IA") {
+                      openSafely(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey")))
+                  })
+
+          '''
+          s = s[:activity_start] + country_block + extras + s[activity_end:]
+          activity.write_text(s, encoding="utf-8")
           service.write_text(s, encoding="utf-8")
 
           activity = root / "app/src/main/java/com/jarvis/personal/MainActivity.kt"
