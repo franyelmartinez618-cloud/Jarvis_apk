@@ -1739,7 +1739,7 @@ gradle_path = next((path for path in gradle_candidates if path.exists()), None)
 if gradle_path is not None:
     gradle_text = gradle_path.read_text(encoding="utf-8")
     gradle_text = re.sub(
-        r'(?m)^\\s*implementation\\(["\\']com\\.google\\.ai\\.edge\\.litertlm:litertlm-android:[^"\\']+["\\']\\)\\s*\\n',
+        r'(?m)^\s*implementation\("com\.google\.ai\.edge\.litertlm:litertlm-android:[^"]+"\)\s*\n',
         '',
         gradle_text
     )
