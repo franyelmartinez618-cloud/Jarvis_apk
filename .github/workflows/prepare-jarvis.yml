@@ -2,7 +2,7 @@ name: Construir APK de Jarvis
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, "fix/jarvis-build-voice-foundation-20261029" ]
   workflow_dispatch:
 
 permissions:
