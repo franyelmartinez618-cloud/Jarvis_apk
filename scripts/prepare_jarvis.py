@@ -937,7 +937,7 @@ if min_sdk_match and int(min_sdk_match.group(1)) < 24:
     gradle_text = gradle_text[:min_sdk_match.start(1)] + "24" + gradle_text[min_sdk_match.end(1):]
 litert_dependency = "com.google.ai.edge.litertlm:litertlm-android"
 if litert_dependency not in gradle_text:
-    dependency_line = '    implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")'
+    dependency_line = '    implementation("com.google.ai.edge.litertlm:litertlm-android:0.17.1")'
     if "dependencies {" not in gradle_text:
         raise SystemExit("No se encontró el bloque dependencies para añadir LiteRT-LM")
     gradle_text = gradle_text.replace("dependencies {", "dependencies {" + chr(10) + dependency_line, 1)
