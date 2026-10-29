@@ -93,6 +93,7 @@ required_imports = [
     "import android.content.IntentFilter",
     "import android.net.Uri",
     "import android.os.Build",
+    "import android.os.PowerManager",
     "import android.provider.Settings",
     "import org.json.JSONObject",
     "import java.net.HttpURLConnection",
@@ -107,7 +108,8 @@ if update_button_marker not in m:
     raise SystemExit("No se encontró el botón del cerebro local para añadir el acceso de actualización.")
 m = m.replace(
     update_button_marker,
-    update_button_marker + '\n        root.addView(button("Buscar actualizaciones de Jarvis") { checkForUpdates(true) })',
+    update_button_marker + '\n        root.addView(button("Buscar actualizaciones de Jarvis") { checkForUpdates(true) })' +
+    '\n        root.addView(button("Mantener Jarvis activo en segundo plano") { requestBackgroundReliability() })',
     1
 )
 
@@ -124,7 +126,38 @@ m, auto_check_count = auto_check_pattern.subn(
 if auto_check_count != 1:
     raise SystemExit("No se pudo añadir la comprobación automática al final de MainActivity.onCreate.")
 
-update_methods = r'''    private fun checkForUpdates(manual: Boolean) {
+update_methods = r'''    private fun requestBackgroundReliability() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            Toast.makeText(this, "Esta versión de Android no necesita este ajuste.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            AlertDialog.Builder(this)
+                .setTitle("Jarvis ya tiene permiso de batería")
+                .setMessage("Android ya permite a Jarvis trabajar sin esa optimización. Aun así, el fabricante puede limitar procesos en segundo plano. En Xiaomi/Redmi, revisa también Batería y activa Inicio automático si esa opción aparece.")
+                .setPositiveButton("Abrir ajustes de Jarvis") { _, _ ->
+                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + packageName)))
+                }
+                .setNegativeButton("Cerrar", null)
+                .show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Ayudar a Jarvis a seguir escuchando")
+            .setMessage("Este permiso reduce la posibilidad de que Android suspenda a Jarvis por ahorro de batería. No puede garantizar escucha permanente: Android y Xiaomi conservan el control del sistema. En Redmi, activa también Inicio automático si está disponible.")
+            .setPositiveButton("Abrir permiso de batería") { _, _ ->
+                try {
+                    startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + packageName)))
+                } catch (e: Exception) {
+                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + packageName)))
+                }
+            }
+            .setNegativeButton("Ahora no", null)
+            .show()
+    }
+
+    private fun checkForUpdates(manual: Boolean) {
         val updatePrefs = getSharedPreferences("jarvis_updates", Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         if (!manual && now - updatePrefs.getLong("last_check_ms", 0L) < 6L * 60L * 60L * 1000L) return
@@ -275,6 +308,15 @@ if "android.permission.REQUEST_INSTALL_PACKAGES" not in xml:
     xml = xml.replace(
         marker,
         marker + '\n    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />',
+        1
+    )
+if "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" not in xml:
+    marker = '    <uses-permission android:name="android.permission.RECORD_AUDIO" />'
+    if marker not in xml:
+        raise SystemExit("No se encontró RECORD_AUDIO en AndroidManifest.xml.")
+    xml = xml.replace(
+        marker,
+        marker + '\n    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />',
         1
     )
 manifest.write_text(xml, encoding="utf-8")
