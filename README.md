@@ -11,7 +11,7 @@ Proyecto personal para Android (objetivo inicial: Redmi Note 13). El APK se comp
 - Busca contactos para llamadas y mensajes.
 - Pide confirmación antes de realizar llamadas o enviar SMS. Los SMS pueden generar cargos según el operador.
 - WhatsApp se abre con el texto preparado: la persona usuaria todavía toca **Enviar**.
-- Respuestas básicas sin internet y conversación abierta opcional con Gemini API.
+- Respuestas básicas sin internet; conversación natural local después de instalar una vez el modelo de lenguaje (~329 MB). Gemini online queda como opción separada.
 - Pantalla oscura renovada, icono vectorial, lista de permisos y estado para ver qué falta habilitar.
 
 ## Conversación online opcional
@@ -28,11 +28,11 @@ Concede solo los permisos que vayas a utilizar. El micrófono es necesario para 
 
 Android restringe el lanzamiento de otras aplicaciones desde servicios en segundo plano. Para abrir apps por voz mientras Jarvis escucha en segundo plano, activa **Mostrar sobre otras apps** desde el botón de permisos de Jarvis. En Xiaomi/Redmi, las restricciones de batería y el inicio automático también pueden afectar la escucha continua.
 
-La detección y el reconocimiento de voz están diseñados para funcionar localmente; Gemini requiere internet y una clave opcional. No se garantiza escucha continua cuando Android o MIUI detienen el servicio.
+La detección y el reconocimiento de voz están diseñados para funcionar localmente; Gemini requiere internet y una clave opcional. En el primer uso Jarvis ofrece preparar el cerebro local: el modelo (~329 MB) se descarga una sola vez y se guarda en los datos privados de la app; no se vuelve a descargar en cada actualización. Se recomienda Wi-Fi. El botón de batería ayuda a abrir el ajuste de exclusión del ahorro de energía, pero Android/MIUI todavía pueden detener servicios y el usuario debe habilitar Inicio automático en Xiaomi si existe esa opción.
 
 ## Actualizaciones desde el móvil
 
-Jarvis comprueba al abrirse si existe una versión más nueva y vuelve a consultar como máximo cada 6 horas. También incluye el botón **Buscar actualizaciones de Jarvis**. Si hay una versión publicada, descarga el APK y abre el instalador; **Android siempre pide autorización para instalar**.
+Cuando un cambio se integra en `main`, GitHub Actions compila la aplicación y, si sigue configurada la firma estable, publica la nueva versión. No tienes que reconstruir ni subir el APK a mano. Jarvis comprueba al abrirse si existe una versión más nueva y vuelve a consultar como máximo cada 6 horas; también incluye **Buscar actualizaciones de Jarvis**. Si hay una versión publicada, descarga el APK y abre el instalador. **Android siempre exige que confirmes la instalación**: una app normal no puede reemplazarse silenciosamente.
 
 Para publicar actualizaciones permanentes hace falta una clave de firma estable. Se configura una sola vez en tu PC (no dentro de la carpeta del repositorio). En PowerShell ejecuta estos dos comandos desde una carpeta segura donde guardar el archivo:
 
