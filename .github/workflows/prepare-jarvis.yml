@@ -8,15 +8,11 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: jarvis-apk-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
-    name: Preparar y compilar Jarvis
+    name: Compilar APK Android
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
@@ -27,311 +23,56 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Extraer y preparar el proyecto Android
+      - name: Extraer y preparar el proyecto
         shell: bash
         run: |
           set -euo pipefail
-          test -f jarvis-android.zip || { echo "::error::No se encontró jarvis-android.zip en la raíz."; exit 1; }
-          mkdir -p "$RUNNER_TEMP/jarvis-source"
-          unzip -q jarvis-android.zip -d "$RUNNER_TEMP/jarvis-source"
-          PROJECT="$RUNNER_TEMP/jarvis-source/jarvis-android"
+          test -f jarvis-android.zip
+          mkdir -p "$RUNNER_TEMP/jarvis-src"
+          unzip -q jarvis-android.zip -d "$RUNNER_TEMP/jarvis-src"
+          PROJECT="$RUNNER_TEMP/jarvis-src/jarvis-android"
           test -f "$PROJECT/settings.gradle.kts"
           test -f "$PROJECT/app/src/main/AndroidManifest.xml"
-          test -f "$PROJECT/app/src/main/java/com/jarvis/personal/WakeWordListener.kt"
-
           python3 - "$PROJECT" <<'PY'
           from pathlib import Path
           import sys
-
           root = Path(sys.argv[1])
 
-          def edit(rel, replacements):
-              p = root / rel
-              s = p.read_text(encoding="utf-8")
-              for old, new in replacements:
-                  if old not in s:
-                      raise SystemExit(f"No encuentro texto de origen en {rel}: {old[:70]}")
-                  s = s.replace(old, new, 1)
-              p.write_text(s, encoding="utf-8")
-
-          edit("app/src/main/java/com/jarvis/personal/JarvisService.kt", [
-              ('private const val MODEL_ASSET = "model-en"', 'private const val MODEL_ASSET = "model-es"'),
-              ('Escuchando: di “Jarvis activate”', 'Escuchando: di “Jarvis, actívate”')
-          ])
-          edit("app/src/main/java/com/jarvis/personal/WakeWordListener.kt", [
-              ('private const val GRAMMAR = "[\\"jarvis activate\\", \\"[unk]\\"]"',
-               'private const val GRAMMAR = "[\\"jarvis activa\\", \\"jarvis activate\\", \\"[unk]\\"]"'),
-              ('if (text.contains("jarvis") && text.contains("activate")) {',
-               'if (text.contains("jarvis") && (text.contains("activa") || text.contains("activate"))) {')
-          ])
-          edit("app/src/main/java/com/jarvis/personal/MainActivity.kt", [
-              ('Asistente de voz personal. Di “Jarvis activate”.',
-               'Tu asistente personal. Di “Jarvis, actívate”.')
-          ])
-
-          manifest = root / "app/src/main/AndroidManifest.xml"
-          s = manifest.read_text(encoding="utf-8")
-          if '<uses-permission android:name="android.permission.INTERNET" />' not in s:
-              s = s.replace('<application', '    <uses-permission android:name="android.permission.INTERNET" />\n\n    <application', 1)
-          manifest.write_text(s, encoding="utf-8")
-
           service = root / "app/src/main/java/com/jarvis/personal/JarvisService.kt"
-          s = service.read_text(encoding="utf-8")
-          start = s.index('    /** Escucha una frase con el reconocimiento de voz de Android.')
-          end = s.index('    private fun beep() {', start)
-          new_listen = r'''    /** Reconocimiento de voz local en español mediante Vosk. No envía audio a internet. */
-          private suspend fun listen(): String? = withContext(Dispatchers.IO) {
-              val currentModel = model ?: return@withContext null
-              var recorder: android.media.AudioRecord? = null
-              var recognizer: org.vosk.Recognizer? = null
-              try {
-                  val rate = 16000
-                  val minimum = android.media.AudioRecord.getMinBufferSize(
-                      rate,
-                      android.media.AudioFormat.CHANNEL_IN_MONO,
-                      android.media.AudioFormat.ENCODING_PCM_16BIT
-                  )
-                  if (minimum <= 0) return@withContext null
-                  recorder = android.media.AudioRecord(
-                      android.media.MediaRecorder.AudioSource.MIC,
-                      rate,
-                      android.media.AudioFormat.CHANNEL_IN_MONO,
-                      android.media.AudioFormat.ENCODING_PCM_16BIT,
-                      maxOf(minimum, rate)
-                  )
-                  if (recorder.state != android.media.AudioRecord.STATE_INITIALIZED) return@withContext null
-                  recognizer = org.vosk.Recognizer(currentModel, rate.toFloat())
-                  recorder.startRecording()
-                  val buffer = ShortArray(4000)
-                  val started = android.os.SystemClock.elapsedRealtime()
-                  while (android.os.SystemClock.elapsedRealtime() - started < 12000) {
-                      val count = recorder.read(buffer, 0, buffer.size)
-                      if (count <= 0) continue
-                      if (recognizer.acceptWaveForm(buffer, count)) {
-                          val finalText = org.json.JSONObject(recognizer.getResult()).optString("text").trim()
-                          if (finalText.isNotEmpty()) return@withContext finalText
-                      }
-                  }
-                  val tail = org.json.JSONObject(recognizer.getFinalResult()).optString("text").trim()
-                  if (tail.isNotEmpty()) tail else null
-              } catch (e: Exception) {
-                  Log.w(TAG, "Reconocimiento offline no disponible", e)
-                  null
-              } finally {
-                  try { recorder?.stop() } catch (_: Exception) {}
-                  try { recorder?.release() } catch (_: Exception) {}
-                  try { recognizer?.close() } catch (_: Exception) {}
-              }
-          }
+          text = service.read_text(encoding="utf-8")
+          old_model = 'private const val MODEL_ASSET = "model-en"'
+          if old_model not in text:
+              raise SystemExit("No se encontró el nombre del modelo de voz en JarvisService.kt")
+          text = text.replace(old_model, 'private const val MODEL_ASSET = "model-es"', 1)
+          text = text.replace('Escuchando: di “Jarvis activate”', 'Escuchando: di “Jarvis, activa”')
+          service.write_text(text, encoding="utf-8")
 
-          '''
-          s = s[:start] + new_listen + s[end:]
-          # Conversación breve de varios turnos, hasta que haya silencio.
-          start_conversation = s.index('    private suspend fun conversation() {')
-          end_conversation = s.index('    private suspend fun handle(cmd: Cmd) {', start_conversation)
-          new_conversation = '''    private suspend fun conversation() {
-                  updateNotification("Listo para escucharte…")
-                  beep()
-                  speak("Dime, señor Frangel.")
-                  var turns = 0
-                  while (running && turns < 5) {
-                      val heard = listen()
-                      if (heard.isNullOrBlank()) {
-                          if (turns == 0) speak("No te escuché.")
-                          return
-                      }
-                      Log.d(TAG, "Escuché: $heard")
-                      val parsed = Parser.parse(heard)
-                      if (parsed == Cmd.Cancel) {
-                          speak("A tu orden, señor Frangel.")
-                          return
-                      }
-                      handle(parsed)
-                      turns += 1
-                      delay(250)
-                  }
-              }
-
-          '''
-          s = s[:start_conversation] + new_conversation + s[end_conversation:]
-
-          # Las órdenes interpretadas por IA siempre pasan por las funciones que confirman acciones.
-          start_unknown = s.index('            is Cmd.Unknown -> speak(')
-          end_unknown = s.index(chr(10) + '        }' + chr(10) + '    }', start_unknown)
-          new_unknown = '''            is Cmd.Unknown -> {
-                              val answer = GeminiClient.interpret(this@JarvisService, cmd.raw)
-                              when (answer?.type) {
-                                  "call" -> if (answer.target.isNotBlank()) doCall(answer.target) else speak("¿A quién llamo, señor Frangel?")
-                                  "whatsapp" -> if (answer.target.isNotBlank()) doMessage(Cmd.Message(Via.WHATSAPP, answer.target, answer.message.takeIf { it.isNotBlank() })) else speak("¿A quién le escribo?")
-                                  "sms" -> if (answer.target.isNotBlank()) doMessage(Cmd.Message(Via.SMS, answer.target, answer.message.takeIf { it.isNotBlank() })) else speak("¿A quién le envío el SMS?")
-                                  "open_app" -> if (answer.target.isNotBlank()) doOpenApp(answer.target) else speak("¿Qué aplicación abro?")
-                                  "time" -> speak(timeText())
-                                  "date" -> speak(dateText())
-                                  "chat" -> if (answer.response.isNotBlank()) speak(answer.response) else speak("No pude preparar una respuesta.")
-                                  else -> speak("Para conversar con la IA necesitas guardar una clave gratuita de Google AI Studio y tener internet. Las órdenes básicas siguen disponibles offline.")
-                              }
-                          }'''
-          s = s[:start_unknown] + new_unknown + s[end_unknown:]
-
-          service.write_text(s, encoding="utf-8")
-
-          # Ajuste de clave AI en la pantalla de inicio, guardada solo en el almacenamiento local.
-          activity = root / "app/src/main/java/com/jarvis/personal/MainActivity.kt"
-          s = activity.read_text(encoding="utf-8")
-          activity_start = s.index('        root.addView(button("Guardar código de país")')
-          activity_end = s.index('        root.addView(button("▶  INICIAR JARVIS")', activity_start)
-          country_block = s[activity_start:activity_end]
-          extras = '''
-                  root.addView(TextView(this).apply {
-                      text = "\\nIA online opcional. Sin clave, Jarvis conserva las órdenes offline. Lo que envíes a la IA se comparte con Google; no dictes datos sensibles."
-                      setPadding(0, pad, 0, 0)
-                  })
-                  val apiKeyInput = EditText(this).apply {
-                      hint = "Clave gratuita de Google AI Studio (opcional)"
-                      inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-                      setSingleLine(true)
-                      setText(prefs().getString("gemini_api_key", ""))
-                  }
-                  root.addView(apiKeyInput)
-                  root.addView(button("Guardar clave de IA solo en este teléfono") {
-                      prefs().edit().putString("gemini_api_key", apiKeyInput.text.toString().trim()).apply()
-                      Toast.makeText(this, "Clave guardada en este teléfono.", Toast.LENGTH_LONG).show()
-                  })
-                  root.addView(button("Obtener clave gratuita de IA") {
-                      openSafely(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey")))
-                  })
-
-          '''
-          s = s[:activity_start] + country_block + extras + s[activity_end:]
-          activity.write_text(s, encoding="utf-8")
-          service.write_text(s, encoding="utf-8")
-
-          activity = root / "app/src/main/java/com/jarvis/personal/MainActivity.kt"
-          s = activity.read_text(encoding="utf-8")
-          marker = '''        root.addView(button("Guardar código de país") {
-                      prefs().edit()
-                          .putString(JarvisService.PREF_COUNTRY, countryInput.text.toString().trim())
-                          .apply()
-                      Toast.makeText(this, "Guardado", Toast.LENGTH_SHORT).show()
-                  })'''
-          extra = marker + '''
-
-                  root.addView(TextView(this).apply {
-                      text = "\\nIA online opcional. Si no configuras una clave, Jarvis conserva las órdenes offline. Lo que envíes a la IA se comparte con Google; no dictes datos sensibles."
-                      setPadding(0, pad, 0, 0)
-                  })
-                  val apiKeyInput = EditText(this).apply {
-                      hint = "Clave gratuita de Google AI Studio (opcional)"
-                      inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-                      setSingleLine(true)
-                      setText(prefs().getString("gemini_api_key", ""))
-                  }
-                  root.addView(apiKeyInput)
-                  root.addView(button("Guardar clave de IA solo en este teléfono") {
-                      prefs().edit().putString("gemini_api_key", apiKeyInput.text.toString().trim()).apply()
-                      Toast.makeText(this, "Clave guardada en este teléfono.", Toast.LENGTH_LONG).show()
-                  })
-                  root.addView(button("Obtener clave gratuita de IA") {
-                      openSafely(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey")))
-                  })'''
-          if marker not in s:
-              raise SystemExit("No encontré el punto para añadir el ajuste de IA en MainActivity.kt")
-          s = s.replace(marker, extra, 1)
-          activity.write_text(s, encoding="utf-8")
+          wake = root / "app/src/main/java/com/jarvis/personal/WakeWordListener.kt"
+          text = wake.read_text(encoding="utf-8")
+          old_grammar = 'private const val GRAMMAR = "[\\\\"jarvis activate\\\\", \\\\"[unk]\\\\"]"'
+          new_grammar = 'private const val GRAMMAR = "[\\\\"jarvis activa\\\\", \\\\"jarvis activate\\\\", \\\\"[unk]\\\\"]"'
+          if old_grammar not in text:
+              raise SystemExit("No se encontró la gramática de activación en WakeWordListener.kt")
+          text = text.replace(old_grammar, new_grammar, 1)
+          old_match = 'if (text.contains("jarvis") && text.contains("activate")) {'
+          new_match = 'if (text.contains("jarvis") && (text.contains("activa") || text.contains("activate"))) {'
+          if old_match not in text:
+              raise SystemExit("No se encontró la condición de activación en WakeWordListener.kt")
+          text = text.replace(old_match, new_match, 1)
+          wake.write_text(text, encoding="utf-8")
           PY
-
-          cat > "$PROJECT/app/src/main/java/com/jarvis/personal/GeminiClient.kt" <<'KOTLIN'
-          package com.jarvis.personal
-
-          import android.content.Context
-          import kotlinx.coroutines.Dispatchers
-          import kotlinx.coroutines.withContext
-          import org.json.JSONArray
-          import org.json.JSONObject
-          import java.net.HttpURLConnection
-          import java.net.URL
-
-          data class JarvisIntent(
-              val type: String,
-              val target: String = "",
-              val message: String = "",
-              val response: String = ""
-          )
-
-          object GeminiClient {
-              suspend fun interpret(context: Context, spokenText: String): JarvisIntent? = withContext(Dispatchers.IO) {
-                  val key = context.getSharedPreferences(JarvisService.PREFS, Context.MODE_PRIVATE)
-                      .getString("gemini_api_key", "")?.trim().orEmpty()
-                  if (key.isBlank()) return@withContext null
-                  if (spokenText.length > 1500) return@withContext JarvisIntent("chat", response = "Ese mensaje es demasiado largo para procesarlo.")
-                  var connection: HttpURLConnection? = null
-                  try {
-                      val instructions = """
-                          Eres Jarvis, el asistente personal del usuario. Habla en español latino natural, breve, amable y respetuoso.
-                          Dirígete al usuario como señor Frangel. Responde preguntas y conversa.
-                          Devuelve SOLO un objeto JSON con las claves type, target, message y response.
-                          type solo puede ser: chat, call, whatsapp, sms, open_app, time, date.
-                          Usa call únicamente cuando el usuario pida explícitamente hacer una llamada.
-                          Usa whatsapp o sms únicamente cuando el usuario pida explícitamente enviar un mensaje.
-                          No afirmes haber hecho una acción en el teléfono: la app pedirá confirmación antes de llamar o enviar.
-                          Para call y open_app, target es el nombre del contacto o app. Para whatsapp/sms, target es el contacto y message el texto dictado.
-                          Si no hay destinatario o texto, deja la cadena vacía. Si es conversación o una pregunta general, type=chat y response contiene la respuesta.
-                          Nunca inventes contactos ni digas que un mensaje fue enviado.
-                          Ejemplo: {"type":"chat","target":"","message":"","response":"Hola, señor Frangel. Aquí estoy, listo para ayudarte."}
-                      """.trimIndent()
-                      val request = JSONObject()
-                          .put("systemInstruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", instructions))))
-                          .put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", spokenText)))))
-                          .put("generationConfig", JSONObject().put("temperature", 0.2).put("maxOutputTokens", 320))
-                      connection = (URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent").openConnection() as HttpURLConnection).apply {
-                          requestMethod = "POST"
-                          connectTimeout = 10000
-                          readTimeout = 25000
-                          doOutput = true
-                          setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-                          setRequestProperty("x-goog-api-key", key)
-                      }
-                      connection.outputStream.use { it.write(request.toString().toByteArray(Charsets.UTF_8)) }
-                      val status = connection.responseCode
-                      val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-                      val payload = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-                      if (status == 429) return@withContext JarvisIntent("chat", response = "Alcanzaste el límite gratuito de la IA por ahora. Las órdenes básicas siguen funcionando sin internet.")
-                      if (status !in 200..299) return@withContext null
-                      val responseText = JSONObject(payload)
-                          .optJSONArray("candidates")?.optJSONObject(0)
-                          ?.optJSONObject("content")?.optJSONArray("parts")
-                          ?.optJSONObject(0)?.optString("text").orEmpty().trim()
-                      if (responseText.isBlank()) return@withContext null
-                      val json = JSONObject(responseText)
-                      val kind = json.optString("type", "chat")
-                      val allowed = setOf("chat", "call", "whatsapp", "sms", "open_app", "time", "date")
-                      JarvisIntent(
-                          type = if (kind in allowed) kind else "chat",
-                          target = json.optString("target", "").trim(),
-                          message = json.optString("message", "").trim(),
-                          response = json.optString("response", "").trim()
-                      )
-                  } catch (_: Exception) {
-                      null
-                  } finally {
-                      connection?.disconnect()
-                  }
-              }
-          }
-          KOTLIN
-
           echo "JARVIS_PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
-      - name: Descargar el modelo de reconocimiento en español (offline)
+      - name: Descargar modelo de español para activación offline
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$JARVIS_PROJECT/app/src/main/assets"
           curl --fail --location --retry 3 --retry-delay 2 \
             https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip \
-            --output "$RUNNER_TEMP/vosk-model.zip"
-          unzip -q "$RUNNER_TEMP/vosk-model.zip" -d "$RUNNER_TEMP"
+            --output "$RUNNER_TEMP/vosk-es.zip"
+          unzip -q "$RUNNER_TEMP/vosk-es.zip" -d "$RUNNER_TEMP"
           test -d "$RUNNER_TEMP/vosk-model-small-es-0.42"
+          mkdir -p "$JARVIS_PROJECT/app/src/main/assets"
           mv "$RUNNER_TEMP/vosk-model-small-es-0.42" "$JARVIS_PROJECT/app/src/main/assets/model-es"
 
       - name: Instalar Gradle 8.7
@@ -341,13 +82,17 @@ jobs:
 
       - name: Compilar APK de depuración
         shell: bash
-        run: gradle --no-daemon --stacktrace assembleDebug
-        working-directory: ${{ runner.temp }}/jarvis-source/jarvis-android
+        run: |
+          set -euo pipefail
+          cd "$JARVIS_PROJECT"
+          gradle --no-daemon --stacktrace assembleDebug
+          mkdir -p "$GITHUB_WORKSPACE/output"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/output/app-debug.apk"
 
       - name: Publicar APK descargable
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
-          path: ${{ runner.temp }}/jarvis-source/jarvis-android/app/build/outputs/apk/debug/app-debug.apk
+          path: output/app-debug.apk
           if-no-files-found: error
           retention-days: 7
