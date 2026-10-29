@@ -49,11 +49,17 @@ jobs:
 
           wake = root / "app/src/main/java/com/jarvis/personal/WakeWordListener.kt"
           text = wake.read_text(encoding="utf-8")
-          old_grammar = 'private const val GRAMMAR = "[\\\\"jarvis activate\\\\", \\\\"[unk]\\\\"]"'
-          new_grammar = 'private const val GRAMMAR = "[\\\\"jarvis activa\\\\", \\\\"jarvis activate\\\\", \\\\"[unk]\\\\"]"'
-          if old_grammar not in text:
+          lines = text.splitlines()
+          found_grammar = False
+          for index, line in enumerate(lines):
+              if "private const val GRAMMAR =" in line:
+                  lines[index] = String.raw`        private const val GRAMMAR = "[\"jarvis activa\", \"jarvis activate\", \"[unk]\"]"`
+                  found_grammar = True
+                  break
+          if not found_grammar:
               raise SystemExit("No se encontró la gramática de activación en WakeWordListener.kt")
-          text = text.replace(old_grammar, new_grammar, 1)
+          text = "\n".join(lines) + "\n"
+
           old_match = 'if (text.contains("jarvis") && text.contains("activate")) {'
           new_match = 'if (text.contains("jarvis") && (text.contains("activa") || text.contains("activate"))) {'
           if old_match not in text:
