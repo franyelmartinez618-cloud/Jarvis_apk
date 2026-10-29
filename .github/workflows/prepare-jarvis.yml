@@ -67,6 +67,7 @@ jobs:
           text = text.replace(old_match, new_match, 1)
           wake.write_text(text, encoding="utf-8")
           PY
+          python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis.py" "$PROJECT"
           echo "JARVIS_PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
       - name: Descargar modelo de español para activación offline
