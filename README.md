@@ -32,18 +32,18 @@ La detección y el reconocimiento de voz están diseñados para funcionar localm
 
 ## Actualizaciones desde el móvil
 
-Jarvis consulta al abrirse si existe una versión posterior y vuelve a revisar como máximo cada 6 horas; también hay un botón **Buscar actualizaciones de Jarvis**. Si encuentra una versión publicada, puede descargar el APK y abrir el instalador de Android. **Android todavía te pedirá autorizar la instalación**; las apps normales no pueden sustituirse silenciosamente.
+Jarvis comprueba al abrirse si existe una versión más nueva y vuelve a consultar como máximo cada 6 horas. También incluye el botón **Buscar actualizaciones de Jarvis**. Si hay una versión publicada, descarga el APK y abre el instalador; **Android siempre pide autorización para instalar**.
 
-Cada compilación de `main` puede publicar un GitHub Release permanente, pero solo cuando se configura la firma estable. Para activarla, crea una clave una sola vez en tu PC y guárdala fuera del repositorio:
+Para publicar actualizaciones permanentes hace falta una clave de firma estable. Se configura una sola vez en tu PC (no dentro de la carpeta del repositorio). En PowerShell ejecuta estos dos comandos desde una carpeta segura donde guardar el archivo:
 
 ```powershell
-keytool -genkeypair -v -keystore jarvis-release.jks -alias jarvis -keyalg RSA -keysize 2048 -validity 10000
-[Convert]::ToBase64String([IO.File]::ReadAllBytes(".\jarvis-release.jks"))
+keytool -genkeypair -v -keystore "$PWD\jarvis-release.jks" -alias jarvis -keyalg RSA -keysize 2048 -validity 10000 -storepass "JarvisKeystorePassword_2026" -keypass "JarvisKeystorePassword_2026" -dname "CN=Jarvis, O=Personal App, C=CO"
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("$PWD\jarvis-release.jks")) | Set-Clipboard
 ```
 
-En GitHub abre **Settings → Secrets and variables → Actions → New repository secret** y crea estos cuatro secretos: `JARVIS_KEYSTORE_BASE64` (pega la salida Base64 del segundo comando), `JARVIS_STORE_PASSWORD`, `JARVIS_KEY_ALIAS` (valor `jarvis`) y `JARVIS_KEY_PASSWORD`. No subas el archivo `.jks` ni las contraseñas al repositorio. Conserva ese mismo archivo de firma y su contraseña: si se pierden o cambian, Android rechazará las futuras actualizaciones sobre esa instalación.
+Después abre [los secretos del repositorio en GitHub](https://github.com/franyelmartinez618-cloud/Jarvis_apk/settings/secrets/actions), pulsa **New repository secret**, pon como nombre `JARVIS_KEYSTORE_BASE64` y pega con Ctrl+V el valor que quedó en el portapapeles. No publiques ni subas el archivo `.jks`; conserva una copia de respaldo en un lugar seguro. El alias y la contraseña están fijados en el flujo de compilación, por lo que **solo hace falta crear ese único secreto**.
 
-Hasta configurar esos secretos, Actions seguirá generando el APK de depuración como artefacto temporal de 7 días y no publicará un APK de actualización. La primera actualización desde una instalación antigua de depuración también puede requerir una reinstalación si su firma no coincide con la clave estable; no desinstales hasta tener claro que conservas cualquier configuración local importante.
+Hasta que exista ese secreto, GitHub seguirá compilando un APK de prueba que caduca a los 7 días y no publicará actualizaciones permanentes. La primera instalación firmada estable puede requerir reinstalar el APK de prueba que tengas ahora, porque las compilaciones de prueba anteriores no compartían una firma persistente. Las instalaciones futuras podrán actualizarse sobre la misma app, con la confirmación de Android.
 
 ## Descargar el APK de prueba
 
