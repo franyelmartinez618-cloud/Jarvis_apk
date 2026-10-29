@@ -15,6 +15,26 @@ s = service_path.read_text(encoding="utf-8")
 s = s.replace("import android.media.AudioManager\n", "import android.media.AudioManager\nimport android.media.AudioFormat\nimport android.media.AudioRecord\nimport android.media.MediaRecorder\n", 1)
 s = s.replace("import org.vosk.LibVosk\n", "import org.json.JSONArray\nimport org.json.JSONObject\nimport org.vosk.LibVosk\nimport org.vosk.Recognizer\n", 1)
 s = s.replace("import java.io.FileOutputStream\n", "import java.io.FileOutputStream\nimport java.net.HttpURLConnection\nimport java.net.URL\nimport java.net.URLEncoder\n", 1)
+
+# Ensure the imports used by the local Vosk microphone recognizer exist even if the ZIP changes import order.
+required_imports = [
+    "import android.media.AudioFormat",
+    "import android.media.AudioRecord",
+    "import android.media.MediaRecorder",
+    "import org.json.JSONArray",
+    "import org.json.JSONObject",
+    "import org.vosk.Recognizer",
+    "import java.net.HttpURLConnection",
+    "import java.net.URL",
+    "import java.net.URLEncoder",
+]
+package_line = "package com.jarvis.personal\n"
+if package_line not in s:
+    raise SystemExit("No se encontró el paquete Java esperado en JarvisService.kt")
+for required_import in required_imports:
+    if required_import not in s:
+        s = s.replace(package_line, package_line + required_import + chr(10), 1)
+
 s = replace_once(s, '        const val PREF_COUNTRY = "country_code"\n', '        const val PREF_COUNTRY = "country_code"\n        const val PREF_GEMINI_KEY = "gemini_api_key"\n', "preferencia Gemini")
 s = replace_once(s, "    private var busy = false\n", "    private var busy = false\n    private val dialogueHistory = ArrayList<Pair<String, String>>()\n", "historial de conversación")
 
@@ -283,7 +303,7 @@ m = m.replace('''        root.addView(countryInput)
         })
 
         root.addView(TextView(this).apply {
-            text = "\\nConversación online opcional (Gemini). Sin clave, Jarvis mantiene las órdenes y respuestas básicas offline. La clave se guarda solo en este teléfono; el plan gratuito tiene límites y Google puede usar sus solicitudes para mejorar sus productos."
+            text = "Conversación online opcional (Gemini). Sin clave, Jarvis mantiene las órdenes y respuestas básicas offline. La clave se guarda solo en este teléfono; el plan gratuito tiene límites y Google puede usar sus solicitudes para mejorar sus productos."
             textSize = 13f
             setTextColor(Color.parseColor("#9AB1C5"))
         })
@@ -415,4 +435,24 @@ icon.write_text(r'''<?xml version="1.0" encoding="utf-8"?>
 </vector>
 ''', encoding="utf-8")
 
-print("Parche funcional aplicado: conversación por turnos, Vosk local, Gemini opcional, panel y permisos visibles.")
+
+# Ensure the Vosk Android Java API is available to Kotlin compilation.
+gradle_candidates = [root / "app/build.gradle.kts", root / "app/build.gradle"]
+gradle_path = next((path for path in gradle_candidates if path.exists()), None)
+if gradle_path is None:
+    raise SystemExit("No se encontró app/build.gradle.kts ni app/build.gradle")
+gradle_text = gradle_path.read_text(encoding="utf-8")
+vosk_dependency = "com.alphacephei:vosk-android"
+if vosk_dependency in gradle_text:
+    gradle_text = re.sub(r"(com\\.alphacephei:vosk-android:)[0-9.]+", r"\\g<1>0.3.75", gradle_text)
+else:
+    if gradle_path.name.endswith(".kts"):
+        dependency_line = '    implementation("com.alphacephei:vosk-android:0.3.75")'
+    else:
+        dependency_line = "    implementation 'com.alphacephei:vosk-android:0.3.75'"
+    if "dependencies {" not in gradle_text:
+        raise SystemExit("No se encontró el bloque dependencies en el archivo Gradle de la app")
+    gradle_text = gradle_text.replace("dependencies {", "dependencies {" + chr(10) + dependency_line, 1)
+gradle_path.write_text(gradle_text, encoding='utf-8')
+
+print("Parche aplicado: imports Vosk, API local y panel/permisos.")
