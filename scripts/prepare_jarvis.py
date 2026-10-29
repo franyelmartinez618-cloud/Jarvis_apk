@@ -932,6 +932,14 @@ gradle_path = next((path for path in gradle_candidates if path.exists()), None)
 if gradle_path is None:
     raise SystemExit("No se encontró app/build.gradle.kts ni app/build.gradle")
 gradle_text = gradle_path.read_text(encoding="utf-8")
+# LiteRT-LM currently resolves Kotlin runtime metadata newer than the ZIP's compiler.
+# Keep the existing Android build toolchain and ask Kotlin 1.9 to skip only the metadata-version guard.
+if "kotlinOptions {" in gradle_text and "-Xskip-metadata-version-check" not in gradle_text:
+    gradle_text = gradle_text.replace(
+        "kotlinOptions {",
+        'kotlinOptions {\n        freeCompilerArgs += "-Xskip-metadata-version-check"',
+        1
+    )
 min_sdk_match = re.search(r"minSdk\s*=\s*(\d+)", gradle_text)
 if min_sdk_match and int(min_sdk_match.group(1)) < 24:
     gradle_text = gradle_text[:min_sdk_match.start(1)] + "24" + gradle_text[min_sdk_match.end(1):]
