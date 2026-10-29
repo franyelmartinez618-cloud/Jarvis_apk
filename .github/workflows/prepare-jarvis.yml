@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    name: Compilar Android
+    name: Preparar y compilar Jarvis
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -27,32 +27,61 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Preparar el código fuente
+      - name: Extraer y preparar el proyecto Android
         shell: bash
         run: |
           set -euo pipefail
-          test -f jarvis-android.zip || { echo "::error::Falta jarvis-android.zip en la raíz del repositorio."; exit 1; }
+          test -f jarvis-android.zip || { echo "::error::No se encontró jarvis-android.zip en la raíz."; exit 1; }
           mkdir -p "$RUNNER_TEMP/jarvis-source"
           unzip -q jarvis-android.zip -d "$RUNNER_TEMP/jarvis-source"
           PROJECT="$RUNNER_TEMP/jarvis-source/jarvis-android"
           test -f "$PROJECT/settings.gradle.kts"
           test -f "$PROJECT/app/src/main/AndroidManifest.xml"
-          test -f "$PROJECT/app/src/main/java/com/jarvis/personal/MainActivity.kt"
+          test -f "$PROJECT/app/src/main/java/com/jarvis/personal/WakeWordListener.kt"
+
+          python3 - "$PROJECT" <<'PY'
+          from pathlib import Path
+          import sys
+          root = Path(sys.argv[1])
+          def edit(rel, replacements):
+              p = root / rel
+              s = p.read_text(encoding="utf-8")
+              for old, new in replacements:
+                  if old not in s:
+                      raise SystemExit(f"No encuentro el texto esperado en {rel}: {old}")
+                  s = s.replace(old, new)
+              p.write_text(s, encoding="utf-8")
+
+          edit("app/src/main/java/com/jarvis/personal/JarvisService.kt", [
+              ('private const val MODEL_ASSET = "model-en"', 'private const val MODEL_ASSET = "model-es"'),
+              ('Escuchando: di “Jarvis activate”', 'Escuchando: di “Jarvis, actívate”')
+          ])
+          edit("app/src/main/java/com/jarvis/personal/WakeWordListener.kt", [
+              ('private const val GRAMMAR = "[\\"jarvis activate\\", \\"[unk]\\"]"',
+               'private const val GRAMMAR = "[\\"jarvis activa\\", \\"jarvis activate\\", \\"[unk]\\"]"'),
+              ('if (text.contains("jarvis") && text.contains("activate")) {',
+               'if (text.contains("jarvis") && (text.contains("activa") || text.contains("activate"))) {')
+          ])
+          edit("app/src/main/java/com/jarvis/personal/MainActivity.kt", [
+              ('Asistente de voz personal. Di “Jarvis activate”.',
+               'Tu asistente personal. Di “Jarvis, actívate”.')
+          ])
+          PY
           echo "JARVIS_PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
-      - name: Descargar el modelo de activación por voz
+      - name: Descargar el modelo de reconocimiento en español (offline)
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$JARVIS_PROJECT/app/src/main/assets"
           curl --fail --location --retry 3 --retry-delay 2 \
-            https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip \
+            https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip \
             --output "$RUNNER_TEMP/vosk-model.zip"
           unzip -q "$RUNNER_TEMP/vosk-model.zip" -d "$RUNNER_TEMP"
-          test -d "$RUNNER_TEMP/vosk-model-small-en-us-0.15"
-          mv "$RUNNER_TEMP/vosk-model-small-en-us-0.15" "$JARVIS_PROJECT/app/src/main/assets/model-en"
+          test -d "$RUNNER_TEMP/vosk-model-small-es-0.42"
+          mv "$RUNNER_TEMP/vosk-model-small-es-0.42" "$JARVIS_PROJECT/app/src/main/assets/model-es"
 
-      - name: Preparar Gradle 8.7
+      - name: Instalar Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
@@ -62,7 +91,7 @@ jobs:
         run: gradle --no-daemon --stacktrace assembleDebug
         working-directory: ${{ runner.temp }}/jarvis-source/jarvis-android
 
-      - name: Publicar APK como artefacto descargable
+      - name: Publicar APK descargable
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
