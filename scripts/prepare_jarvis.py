@@ -46,20 +46,22 @@ conversation = r'''    /** Una activación abre varios turnos; no exige repetir 
         }
         updateNotification("Verificando la voz del propietario")
         delay(200)
-        var turns = 0
-        while (running && turns < 8) {
-            val heard = listen() ?: break
+        while (running) {
+            val heard = listen()
+            if (heard.isNullOrBlank()) {
+                // Silence, unrelated media, or an unverified speaker must never close the owner session
+                // or make Jarvis speak. Keep listening until the owner says the deactivation command.
+                delay(150)
+                continue
+            }
             val clean = heard.trim()
-            if (clean.isBlank()) break
-            Log.d(TAG, "Escuché: " + clean)
-            turns++
+            Log.d(TAG, "Orden autorizada por voz: " + clean)
+            updateNotification("Conversación activa: orden de voz autorizada")
             val command = Parser.parse(clean)
             handle(command)
             if (command == Cmd.Cancel) break
             delay(250)
         }
-        if (turns == 0) updateNotification("No se recibió una orden de voz autorizada")
-        else if (turns >= 8) speak("Dejo la conversación en espera. Di Jarvis, activa para volver a hablar.")
     }
 
     private suspend fun handle(cmd: Cmd) {
