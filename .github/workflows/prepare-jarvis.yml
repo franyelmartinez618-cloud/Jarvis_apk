@@ -157,7 +157,7 @@ jobs:
 
           # Las órdenes interpretadas por IA siempre pasan por las funciones que confirman acciones.
           start_unknown = s.index('            is Cmd.Unknown -> speak(')
-          end_unknown = s.index('\\n        }\\n    }'.replace('\\\\n', '\\n'), start_unknown)
+          end_unknown = s.index(chr(10) + '        }' + chr(10) + '    }', start_unknown)
           new_unknown = '''            is Cmd.Unknown -> {
                               val answer = GeminiClient.interpret(this@JarvisService, cmd.raw)
                               when (answer?.type) {
