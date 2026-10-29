@@ -9,12 +9,12 @@ def replace_once(text, old, new, label):
         raise SystemExit("No se encontró el bloque esperado: " + label)
     return text.replace(old, new, 1)
 
-# ── Servicio: conversación por varios turnos, voz offline y Gemini opcional.
+# ── Servicio: reconocimiento offline y habilidades locales.
 service_path = root / "app/src/main/java/com/jarvis/personal/JarvisService.kt"
 s = service_path.read_text(encoding="utf-8")
 s = s.replace("import android.media.AudioManager\n", "import android.media.AudioManager\nimport android.media.AudioFormat\nimport android.media.AudioRecord\nimport android.media.MediaRecorder\n", 1)
-s = s.replace("import org.vosk.LibVosk\n", "import org.json.JSONArray\nimport org.json.JSONObject\nimport org.vosk.LibVosk\nimport org.vosk.Recognizer\n", 1)
-s = s.replace("import java.io.FileOutputStream\n", "import java.io.FileOutputStream\nimport java.net.HttpURLConnection\nimport java.net.URL\nimport java.net.URLEncoder\n", 1)
+s = s.replace("import org.vosk.LibVosk\\n", "import org.json.JSONObject\\nimport org.vosk.LibVosk\\nimport org.vosk.Recognizer\\n", 1)
+s = s.replace("import java.io.FileOutputStream\\n", "import java.io.FileOutputStream\\nimport java.net.URLEncoder\\n", 1)
 
 # Ensure the imports used by the local Vosk microphone recognizer exist even if the ZIP changes import order.
 required_imports = [
@@ -32,7 +32,7 @@ for required_import in required_imports:
     if required_import not in s:
         s = s.replace(package_line, package_line + required_import + chr(10), 1)
 
-s = replace_once(s, '        const val PREF_COUNTRY = "country_code"\n', '        const val PREF_COUNTRY = "country_code"\n        const val PREF_GEMINI_KEY = "gemini_api_key"\n', "preferencia Gemini")
+s = replace_once(s, '        const val PREF_COUNTRY = "country_code"\\n', '        const val PREF_COUNTRY = "country_code"\\n', "código de país")
 s = replace_once(s, "    private var busy = false\n", "    private var busy = false\n    private val dialogueHistory = ArrayList<Pair<String, String>>()\n    private var ownerSessionUntilMs = 0L\n", "sesión local y verificación de voz")
 
 conversation = r'''    /** Una activación abre varios turnos; no exige repetir la frase en cada orden. */
@@ -1295,11 +1295,11 @@ if gradle_path is not None:
         '',
         gradle_text
     )
-    gradle_text = gradle_text.replace('        freeCompilerArgs += "-Xskip-metadata-version-check"\\n', '')
+    gradle_text = gradle_text.replace('        freeCompilerArgs += "-Xskip-metadata-version-check"' + chr(10), '')
     gradle_path.write_text(gradle_text, encoding="utf-8")
 
 # Remove obsolete credential plumbing from the generated service.
 service_path = root / "app/src/main/java/com/jarvis/personal/JarvisService.kt"
 service_text = service_path.read_text(encoding="utf-8")
-service_text = service_text.replace('        const val PREF_GEMINI_KEY = "gemini_api_key"\\n', '')
+service_text = service_text.replace('        const val PREF_GEMINI_KEY = "gemini_api_key"' + chr(10), '')
 service_path.write_text(service_text, encoding="utf-8")
