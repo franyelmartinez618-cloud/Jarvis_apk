@@ -193,7 +193,7 @@ voice_and_ai = r'''    /** Reconoce las órdenes directamente con Vosk y el mode
         if (now < ownerSessionUntilMs) return true
         val recent = audio.takeLast(16000 * 3).toFloatArray()
         val matched = OwnerVoiceVerifier.matches(this, recent)
-        if (matched) ownerSessionUntilMs = now + 90_000L
+        if (matched) ownerSessionUntilMs = now + 15_000L
         return matched
     }
 
