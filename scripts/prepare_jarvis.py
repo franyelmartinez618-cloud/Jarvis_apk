@@ -1219,7 +1219,7 @@ class MainActivity : Activity() {
             catch (_: Exception) { return }
         val current = packageInfo.versionCode
         val previous = statePrefs.getInt("last_seen_version_code", 0)
-        val updatedAfterInstall = packageInfo.lastUpdateTime > packageInfo.firstInstallTime
+        val updatedAfterInstall = packageInfo.lastUpdateTime > packageInfo.firstInstallTime + 5_000L
         statePrefs.edit().putInt("last_seen_version_code", current).apply()
         val wasUpdated = (previous > 0 && current > previous) || (previous == 0 && updatedAfterInstall)
         if (!wasUpdated) return
