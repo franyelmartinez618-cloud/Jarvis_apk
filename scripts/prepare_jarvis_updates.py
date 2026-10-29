@@ -109,7 +109,15 @@ if update_button_marker not in m:
 m = m.replace(
     update_button_marker,
     update_button_marker + '\n        root.addView(button("Buscar actualizaciones de Jarvis") { checkForUpdates(true) })' +
-    '\n        root.addView(button("Mantener Jarvis activo en segundo plano") { requestBackgroundReliability() })',
+    '\n        root.addView(button("Mantener Jarvis activo en segundo plano") { requestBackgroundReliability() })' +
+    '\n        root.addView(button("Activar control de pantalla (Accesibilidad)") {' +
+    '\n            AlertDialog.Builder(this)' +
+    '\n                .setTitle("Permitir control de pantalla")' +
+    '\n                .setMessage("Este permiso permite a Jarvis leer el texto visible y pulsar controles cuando tú se lo ordenes. Actívalo manualmente en Ajustes de Accesibilidad. Las acciones que puedan enviar, publicar, pagar o borrar requieren confirmación por voz.")' +
+    '\n                .setPositiveButton("Abrir ajustes") { _, _ -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }' +
+    '\n                .setNegativeButton("Cancelar", null)' +
+    '\n                .show()' +
+    '\n        })',
     1
 )
 

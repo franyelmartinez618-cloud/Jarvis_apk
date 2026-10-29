@@ -8,6 +8,8 @@ Proyecto personal para Android (objetivo inicial: Redmi Note 13). El APK se comp
 - Reconocimiento de activación y de órdenes en español con Vosk local; las órdenes básicas no necesitan una API de voz en la nube.
 - Tras activarlo, mantiene una conversación por varios turnos sin pedir la frase de activación cada vez. La sesión vuelve a espera tras silencio o al alcanzar el límite de turnos.
 - Abre aplicaciones por el nombre que aparece en el teléfono.
+- Control opcional de pantalla mediante Accesibilidad: pulsar controles visibles por texto, escribir en el campo enfocado, desplazarse, volver atrás, ir al inicio, abrir notificaciones/ajustes rápidos y leer el texto visible.
+- Las acciones de pantalla que puedan enviar, publicar, pagar o borrar requieren una segunda confirmación por voz; Accesibilidad debe activarse manualmente desde Ajustes de Android.
 - Busca contactos para llamadas y mensajes.
 - Pide confirmación antes de realizar llamadas o enviar SMS. Los SMS pueden generar cargos según el operador.
 - WhatsApp se abre con el texto preparado: la persona usuaria todavía toca **Enviar**.
@@ -26,7 +28,7 @@ La IA solo genera texto: no puede ejecutar directamente llamadas, SMS ni abrir a
 
 Concede solo los permisos que vayas a utilizar. El micrófono es necesario para escuchar; los contactos, para buscar nombres; llamadas y SMS, para esas acciones; notificaciones, para informar del estado.
 
-Android restringe el lanzamiento de otras aplicaciones desde servicios en segundo plano. Para abrir apps por voz mientras Jarvis escucha en segundo plano, activa **Mostrar sobre otras apps** desde el botón de permisos de Jarvis. En Xiaomi/Redmi, las restricciones de batería y el inicio automático también pueden afectar la escucha continua.
+Android restringe el lanzamiento de otras aplicaciones desde servicios en segundo plano. Para abrir apps por voz mientras Jarvis escucha en segundo plano, activa **Mostrar sobre otras apps** desde el botón de permisos de Jarvis. Para interactuar con controles visibles dentro de otras apps, pulsa **Activar control de pantalla (Accesibilidad)** y habilita Jarvis manualmente en Ajustes de Accesibilidad. El servicio procesa la pantalla por orden y no guarda ni transmite eventos. En Xiaomi/Redmi, las restricciones de batería y el inicio automático también pueden afectar la escucha continua.
 
 La detección y el reconocimiento de voz están diseñados para funcionar localmente; Gemini requiere internet y una clave opcional. En el primer uso Jarvis ofrece preparar el cerebro local: el modelo (~329 MB) se descarga una sola vez y se guarda en los datos privados de la app; no se vuelve a descargar en cada actualización. Se recomienda Wi-Fi. El botón de batería ayuda a abrir el ajuste de exclusión del ahorro de energía, pero Android/MIUI todavía pueden detener servicios y el usuario debe habilitar Inicio automático en Xiaomi si existe esa opción.
 
