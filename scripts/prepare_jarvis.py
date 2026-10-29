@@ -1092,7 +1092,7 @@ class MainActivity : Activity() {
         // Warm the local speaker verifier while the first-run dialog/permissions are being handled.
         OwnerVoiceVerifier.warmUp(applicationContext)
         handleVersionChange()
-        if (!setupPrefs.getBoolean("setup_complete", false) &&
+        if (!countdownActive && !setupPrefs.getBoolean("setup_complete", false) &&
             !setupPrefs.getBoolean("welcome_dialog_seen", false)) {
             handler.postDelayed({ showWelcomeDialog() }, 450)
         }
@@ -1215,11 +1215,14 @@ class MainActivity : Activity() {
     }
 
     private fun handleVersionChange() {
-        val current = try { packageManager.getPackageInfo(packageName, 0).versionCode }
+        val packageInfo = try { packageManager.getPackageInfo(packageName, 0) }
             catch (_: Exception) { return }
+        val current = packageInfo.versionCode
         val previous = statePrefs.getInt("last_seen_version_code", 0)
+        val updatedAfterInstall = packageInfo.lastUpdateTime > packageInfo.firstInstallTime
         statePrefs.edit().putInt("last_seen_version_code", current).apply()
-        if (previous <= 0 || current <= previous) return
+        val wasUpdated = (previous > 0 && current > previous) || (previous == 0 && updatedAfterInstall)
+        if (!wasUpdated) return
         countdownActive = true
         var remaining = 3
         fun tick() {
@@ -1229,7 +1232,7 @@ class MainActivity : Activity() {
                 remaining -= 1
                 handler.postDelayed({ tick() }, 1000)
             } else {
-                val restartService = statePrefs.getBoolean("was_running", false)
+                val restartService = statePrefs.getBoolean("was_running", previous == 0 && updatedAfterInstall)
                 stopService(Intent(this, JarvisService::class.java))
                 handler.postDelayed({
                     if (restartService && hasPermission(Manifest.permission.RECORD_AUDIO) && OwnerVoiceVerifier.isEnrolled(this)) {
@@ -1239,6 +1242,10 @@ class MainActivity : Activity() {
                     }
                     countdownActive = false
                     refreshUi()
+                    if (!setupPrefs.getBoolean("setup_complete", false) &&
+                        !setupPrefs.getBoolean("welcome_dialog_seen", false)) {
+                        handler.postDelayed({ showWelcomeDialog() }, 350)
+                    }
                     Toast.makeText(this, "Cambios aplicados. JARVIS quedó actualizado.", Toast.LENGTH_LONG).show()
                 }, 250)
             }
