@@ -13,7 +13,7 @@ def replace_once(text, old, new, label):
 service_path = root / "app/src/main/java/com/jarvis/personal/JarvisService.kt"
 s = service_path.read_text(encoding="utf-8")
 s = s.replace("import android.media.AudioManager\n", "import android.media.AudioManager\nimport android.media.AudioFormat\nimport android.media.AudioRecord\nimport android.media.MediaRecorder\n", 1)
-s = s.replace("import org.vosk.LibVosk\n", "import org.json.JSONArray\nimport org.json.JSONObject\nimport org.vosk.LibVosk\n", 1)
+s = s.replace("import org.vosk.LibVosk\n", "import org.json.JSONArray\nimport org.json.JSONObject\nimport org.vosk.LibVosk\nimport org.vosk.Recognizer\n", 1)
 s = s.replace("import java.io.FileOutputStream\n", "import java.io.FileOutputStream\nimport java.net.HttpURLConnection\nimport java.net.URL\nimport java.net.URLEncoder\n", 1)
 s = replace_once(s, '        const val PREF_COUNTRY = "country_code"\n', '        const val PREF_COUNTRY = "country_code"\n        const val PREF_GEMINI_KEY = "gemini_api_key"\n', "preferencia Gemini")
 s = replace_once(s, "    private var busy = false\n", "    private var busy = false\n    private val dialogueHistory = ArrayList<Pair<String, String>>()\n", "historial de conversación")
@@ -53,7 +53,7 @@ conversation = r'''    /** Una activación abre varios turnos; no exige repetir 
     }
 
 '''
-s, count = re.subn(r'(?ms)^    private suspend fun conversation\(\) \{.*?^    private suspend fun handle\(cmd: Cmd\) \{.*?^    \}\n', conversation, s, count=1)
+s, count = re.subn(r'(?ms)^    private suspend fun conversation\(\) \{.*?^    private suspend fun handle\(cmd: Cmd\) \{.*?^    \}\n', lambda _: conversation, s, count=1)
 if count != 1:
     raise SystemExit("No se pudo cambiar el flujo de conversación")
 
@@ -107,7 +107,7 @@ open_app = r'''    private suspend fun doOpenApp(name: String) {
     }
 
 '''
-s, count = re.subn(r'(?ms)^    private suspend fun doOpenApp\(name: String\) \{.*?^    private fun timeText\(\): String \{', open_app + '    private fun timeText(): String {', s, count=1)
+s, count = re.subn(r'(?ms)^    private suspend fun doOpenApp\(name: String\) \{.*?^    private fun timeText\(\): String \{', lambda _: open_app + '    private fun timeText(): String {', s, count=1)
 if count != 1:
     raise SystemExit("No se pudo actualizar el buscador de aplicaciones")
 
@@ -221,7 +221,7 @@ voice_and_ai = r'''    /** Reconoce las órdenes directamente con Vosk y el mode
     }
 
 '''
-s, count = re.subn(r'(?ms)^    /\*\* Escucha una frase con el reconocimiento de voz de Android\..*?^    private fun beep\(\) \{', voice_and_ai + '    private fun beep() {', s, count=1)
+s, count = re.subn(r'(?ms)^    /\*\* Escucha una frase con el reconocimiento de voz de Android\..*?^    private fun beep\(\) \{', lambda _: voice_and_ai + '    private fun beep() {', s, count=1)
 if count != 1:
     raise SystemExit("No se pudo sustituir el reconocimiento de voz")
 service_path.write_text(s, encoding="utf-8")
@@ -320,7 +320,7 @@ m = m.replace('''    private fun button(label: String, onClick: () -> Unit) = Bu
         setPadding(12, 4, 12, 4)
         setOnClickListener { onClick() }
     }''', 1)
-m = re.sub(r'(?ms)^    private fun refresh\(\) \{.*?^    \}\n\n    private fun startJarvis\(\)', r'''    private fun refresh() {
+m = re.sub(r'(?ms)^    private fun refresh\(\) \{.*?^    \}\n\n    private fun startJarvis\(\)', lambda _: r'''    private fun refresh() {
         val rows = runtimePermissions.map { permission ->
             val label = when (permission) {
                 Manifest.permission.RECORD_AUDIO -> "Micrófono y escucha"
