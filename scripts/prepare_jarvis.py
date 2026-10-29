@@ -229,6 +229,7 @@ service_path.write_text(s, encoding="utf-8")
 # ── Pantalla: aspecto oscuro, estado individual de permisos y clave opcional.
 main_path = root / "app/src/main/java/com/jarvis/personal/MainActivity.kt"
 m = main_path.read_text(encoding="utf-8")
+m = m.replace("private lateinit var status: TextView", "private lateinit var status: TextView" + chr(10) + "    private val permissionQueue = mutableListOf<String>()", 1)
 m = m.replace("import android.graphics.Color\n", "import android.graphics.Color\nimport android.graphics.drawable.GradientDrawable\n", 1)
 m = m.replace('''        val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -344,11 +345,29 @@ m = re.sub(r'(?ms)^    private fun refresh\(\) \{.*?^    \}\n\n    private fun s
     }
 
     private fun requestNextPermission() {
-        val missing = runtimePermissions.firstOrNull { !granted(it) }
-        if (missing == null) {
-            Toast.makeText(this, "Los permisos básicos ya están concedidos", Toast.LENGTH_SHORT).show()
+        permissionQueue.clear()
+        permissionQueue.addAll(runtimePermissions.filter { !granted(it) })
+        requestNextQueuedPermission()
+    }
+
+    private fun requestNextQueuedPermission() {
+        while (permissionQueue.isNotEmpty() && granted(permissionQueue.first())) {
+            permissionQueue.removeAt(0)
+        }
+        val next = if (permissionQueue.isEmpty()) null else permissionQueue.removeAt(0)
+        if (next == null) {
+            refresh()
+            Toast.makeText(this, "Terminaste la revisión de permisos. Revisa los indicadores.", Toast.LENGTH_LONG).show()
         } else {
-            requestPermissions(arrayOf(missing), 100)
+            requestPermissions(arrayOf(next), 100)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 100) {
+            refresh()
+            status.postDelayed({ requestNextQueuedPermission() }, 250)
         }
     }
 
