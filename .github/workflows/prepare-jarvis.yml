@@ -2,7 +2,11 @@ name: Construir APK de Jarvis
 
 on:
   push:
-    branches: [ main, "fix/jarvis-build-voice-foundation-20261029", "feat/jarvis-owner-voice-gate-20261029", "feat/jarvis-offline-brain-litertlm-20261029", "feat/jarvis-auto-updates-20261029", "fix/jarvis-first-run-and-background-20261029", "feat/jarvis-accessibility-screen-controls-20261029", "feat/jarvis-private-offline-fast-start-20261029" ]
+    branches: [ main ]
+    paths-ignore:
+      - "web/**"
+      - ".github/workflows/deploy-jarvis-web.yml"
+      - "README.md"
   workflow_dispatch:
 
 permissions:
@@ -35,85 +39,11 @@ jobs:
           PROJECT="$RUNNER_TEMP/jarvis-src/jarvis-android"
           test -f "$PROJECT/settings.gradle.kts"
           test -f "$PROJECT/app/src/main/AndroidManifest.xml"
-          python3 - "$PROJECT" <<'PY'
-          from pathlib import Path
-          import sys
-          root = Path(sys.argv[1])
-
-          service = root / "app/src/main/java/com/jarvis/personal/JarvisService.kt"
-          text = service.read_text(encoding="utf-8")
-          old_model = 'private const val MODEL_ASSET = "model-en"'
-          if old_model not in text:
-              raise SystemExit("No se encontró el nombre del modelo de voz en JarvisService.kt")
-          text = text.replace(old_model, 'private const val MODEL_ASSET = "model-es"', 1)
-          text = text.replace('Escuchando: di “Jarvis activate”', 'Escuchando: di “Jarvis, activa”')
-          service.write_text(text, encoding="utf-8")
-
-          wake = root / "app/src/main/java/com/jarvis/personal/WakeWordListener.kt"
-          text = wake.read_text(encoding="utf-8")
-          lines = text.splitlines()
-          found_grammar = False
-          for index, line in enumerate(lines):
-              if "private const val GRAMMAR =" in line:
-                  lines[index] = r'        private const val GRAMMAR = "[\"jarvis activa\", \"jarvis activate\", \"[unk]\"]"'
-                  found_grammar = True
-                  break
-          if not found_grammar:
-              raise SystemExit("No se encontró la gramática de activación en WakeWordListener.kt")
-          text = "\n".join(lines) + "\n"
-
-          old_match = 'if (text.contains("jarvis") && text.contains("activate")) {'
-          new_match = 'if (text.contains("jarvis") && (text.contains("activa") || text.contains("activate"))) {'
-          if old_match not in text:
-              raise SystemExit("No se encontró la condición de activación en WakeWordListener.kt")
-          text = text.replace(old_match, new_match, 1)
-          wake.write_text(text, encoding="utf-8")
-          PY
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis.py" "$PROJECT"
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_updates.py" "$PROJECT"
+          python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_web_shell.py" "$PROJECT"
+          if grep -q 'android.permission.RECORD_AUDIO' "$PROJECT/app/src/main/AndroidManifest.xml"; then echo "ERROR: microphone permission remains"; exit 1; fi
           echo "JARVIS_PROJECT=$PROJECT" >> "$GITHUB_ENV"
-
-      - name: Descargar modelo de español para activación offline
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 --retry-delay 2 \
-            https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip \
-            --output "$RUNNER_TEMP/vosk-es.zip"
-          unzip -q "$RUNNER_TEMP/vosk-es.zip" -d "$RUNNER_TEMP"
-          test -d "$RUNNER_TEMP/vosk-model-small-es-0.42"
-          mkdir -p "$JARVIS_PROJECT/app/src/main/assets"
-          mv "$RUNNER_TEMP/vosk-model-small-es-0.42" "$JARVIS_PROJECT/app/src/main/assets/model-es"
-
-      - name: Preparar verificación de voz local del propietario
-        shell: bash
-        run: |
-          set -euo pipefail
-          SHERPA_VERSION="v2.0.1"
-          SHERPA_TMP="$RUNNER_TEMP/sherpa-android"
-          mkdir -p "$SHERPA_TMP"
-          curl --fail --location --retry 3 --retry-delay 2 \
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/${SHERPA_VERSION}/sherpa-onnx-${SHERPA_VERSION}-android.tar.bz2" \
-            --output "$RUNNER_TEMP/sherpa-android.tar.bz2"
-          tar -xjf "$RUNNER_TEMP/sherpa-android.tar.bz2" -C "$SHERPA_TMP"
-          test -d "$SHERPA_TMP/jniLibs/arm64-v8a"
-          test -f "$SHERPA_TMP/jniLibs/arm64-v8a/libsherpa-onnx-jni.so"
-          mkdir -p "$JARVIS_PROJECT/app/src/main/jniLibs/arm64-v8a"
-          cp "$SHERPA_TMP"/jniLibs/arm64-v8a/*.so "$JARVIS_PROJECT/app/src/main/jniLibs/arm64-v8a/"
-
-          ASSET_DIR="$JARVIS_PROJECT/app/src/main/assets"
-          mkdir -p "$ASSET_DIR"
-          curl --fail --location --retry 3 --retry-delay 2 \
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx" \
-            --output "$ASSET_DIR/jarvis-speaker.onnx"
-          test -s "$ASSET_DIR/jarvis-speaker.onnx"
-
-          KOTLIN_DIR="$JARVIS_PROJECT/app/src/main/java/com/k2fsa/sherpa/onnx"
-          for source in Speaker.kt OnlineStream.kt SpeakerEmbeddingExtractorConfig.kt; do
-            test -s "$KOTLIN_DIR/$source"
-            grep -q '^package com.k2fsa.sherpa.onnx' "$KOTLIN_DIR/$source"
-          done
-          echo "Se preparó el motor local de identificación de voz para ARM64."
 
       - name: Instalar Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
