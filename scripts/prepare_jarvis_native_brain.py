@@ -13,31 +13,31 @@ main = main_path.read_text(encoding="utf-8")
 
 # The generator that adds Android phone tools historically injected Qwen/LiteRT-LM.
 # Strip every inference dependency and replace only the conversational entry points.
-service = re.sub(r"(?m)^import com\\.google\\.ai\\.edge\\.litertlm\\.\\*\\s*\\n", "", service)
-service = re.sub(r"(?m)^import kotlinx\\.coroutines\\.flow\\.collect\\s*\\n", "", service)
-service = re.sub(r"(?m)^import kotlinx\\.coroutines\\.sync\\.(?:Mutex|withLock)\\s*\\n", "", service)
-service = re.sub(r"(?m)^.*private const val BRAIN_URL.*\\n", "", service)
-service = re.sub(r"(?m)^.*private const val BRAIN_SHA256.*\\n", "", service)
+service = re.sub(r"(?m)^import com\.google\.ai\.edge\.litertlm\.\*\s*\n", "", service)
+service = re.sub(r"(?m)^import kotlinx\.coroutines\.flow\.collect\s*\n", "", service)
+service = re.sub(r"(?m)^import kotlinx\.coroutines\.sync\.(?:Mutex|withLock)\s*\n", "", service)
+service = re.sub(r"(?m)^.*private const val BRAIN_URL.*\n", "", service)
+service = re.sub(r"(?m)^.*private const val BRAIN_SHA256.*\n", "", service)
 for pattern in [
-    r"(?m)^\\s*@Volatile private var brainLoading = false\\s*\\n",
-    r"(?m)^\\s*@Volatile private var brainEngine: Engine\\? = null\\s*\\n",
-    r"(?m)^\\s*@Volatile private var brainConversation: Conversation\\? = null\\s*\\n",
-    r"(?m)^\\s*private val brainMutex = Mutex\\(\\)\\s*\\n",
+    r"(?m)^\s*@Volatile private var brainLoading = false\s*\n",
+    r"(?m)^\s*@Volatile private var brainEngine: Engine\? = null\s*\n",
+    r"(?m)^\s*@Volatile private var brainConversation: Conversation\? = null\s*\n",
+    r"(?m)^\s*private val brainMutex = Mutex\(\)\s*\n",
 ]:
     service = re.sub(pattern, "", service)
 service = service.replace(
-    "        try { brainConversation?.close() } catch (_: Exception) {}\\n"
-    "        try { brainEngine?.close() } catch (_: Exception) {}\\n",
+    "        try { brainConversation?.close() } catch (_: Exception) {}\n"
+    "        try { brainEngine?.close() } catch (_: Exception) {}\n",
     ""
 )
 
-dialogue_marker = "    private val dialogueHistory = ArrayList<Pair<String, String>>()\\n"
+dialogue_marker = "    private val dialogueHistory = ArrayList<Pair<String, String>>()\n"
 if dialogue_marker not in service:
     raise SystemExit("No se encontró el historial de diálogo para integrar el motor propio.")
 if "private var nativeBrain: JarvisNativeBrain?" not in service:
     service = service.replace(
         dialogue_marker,
-        dialogue_marker + "    @Volatile private var nativeBrain: JarvisNativeBrain? = null\\n",
+        dialogue_marker + "    @Volatile private var nativeBrain: JarvisNativeBrain? = null\n",
         1
     )
 
@@ -113,7 +113,7 @@ for gradle_path in [root / "app/build.gradle.kts", root / "app/build.gradle"]:
     if gradle_path.exists():
         text = gradle_path.read_text(encoding="utf-8")
         text = re.sub(
-            r'(?m)^\\s*implementation\\("com\\.google\\.ai\\.edge\\.litertlm:litertlm-android:[^"]+"\\)\\s*\\n',
+            r'(?m)^\s*implementation\("com\.google\.ai\.edge\.litertlm:litertlm-android:[^"]+"\)\s*\n',
             "",
             text
         )
@@ -130,7 +130,7 @@ if first >= 0:
 
 # The upgrade restart path no longer depends on a one-time model-download flag.
 main = main.replace(
-    '                    val brainFile = File(noBackupFilesDir, "jarvis-brain-qwen3-1.7b.litertlm")\\n'
+    '                    val brainFile = File(noBackupFilesDir, "jarvis-brain-qwen3-1.7b.litertlm")\n'
     '                    val modelAccepted = brainFile.exists() || statePrefs.getBoolean("brain_download_accepted", false)',
     '                    val modelAccepted = true'
 )
@@ -151,7 +151,7 @@ main_path.write_text(main, encoding="utf-8")
 manifest_path = root / "app/src/main/AndroidManifest.xml"
 if manifest_path.exists():
     manifest = manifest_path.read_text(encoding="utf-8")
-    manifest = re.sub(r"(?m)^\\s*<uses-native-library android:name=\"lib(?:vndksupport|OpenCL)\\.so\" android:required=\"false\" />\\s*\\n", "", manifest)
+    manifest = re.sub(r"(?m)^\s*<uses-native-library android:name=\"lib(?:vndksupport|OpenCL)\.so\" android:required=\"false\" />\s*\n", "", manifest)
     manifest_path.write_text(manifest, encoding="utf-8")
 
 # Install our self-written inference runtime into the Android app.
