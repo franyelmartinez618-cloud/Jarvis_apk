@@ -49,7 +49,7 @@ jobs:
           python -m pip install --index-url https://download.pytorch.org/whl/cpu -r brain/requirements.txt
 
       - name: Generar ejercicios originales de razonamiento
-        run: python brain/generate_curriculum.py --output data/seed/zz_generated_curriculum.jsonl --count 3000
+        run: python brain/generate_curriculum.py --output data/seed/zz_generated_curriculum.jsonl --count 300
 
       - name: Construir corpus original JARVIS
         run: |
@@ -66,14 +66,29 @@ jobs:
 
       - name: Evaluar respuestas fuera del corpus de entrenamiento
         run: |
-          python brain/evaluate.py --checkpoint checkpoints/jarvis-sft.pt --questions brain/eval/questions.jsonl --output reports/jarvis-quality.json --max-tokens 96
+          python brain/evaluate.py --checkpoint checkpoints/jarvis-sft.pt --questions brain/eval/questions.jsonl --output reports/jarvis-quality.json --max-tokens 180
 
-      - name: Exportar checkpoint ajustado al formato JARVIS01
+      - name: Bloquear checkpoints que no superen la evaluación
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("reports/jarvis-quality.json").read_text(encoding="utf-8"))
+          print(json.dumps({key: report[key] for key in (
+              "quality_passed", "question_count", "nonempty_rate",
+              "average_keyword_recall", "average_repeated_trigram_ratio"
+          )}, ensure_ascii=False))
+          if report.get("quality_passed") is not True:
+              raise SystemExit("Checkpoint rechazado: no se exportará ni se integrará en Android.")
+          PY
+
+      - name: Exportar checkpoint aprobado al formato JARVIS01
         run: |
           python brain/export_android.py --checkpoint checkpoints/jarvis-sft.pt --output brain/artifacts/jarvis-brain.bin
           python -m json.tool brain/artifacts/jarvis-brain.json
 
-      - name: Publicar checkpoint experimental para evaluación
+      - name: Publicar pesos e informe de entrenamiento
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-brain-training-experiment
@@ -86,5 +101,5 @@ jobs:
             reports/jarvis-quality.json
             brain/artifacts/jarvis-brain.bin
             brain/artifacts/jarvis-brain.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14

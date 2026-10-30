@@ -15,9 +15,11 @@ from tokenizer import BOS, EOS, PAD, ByteTokenizer
 PAIR = re.compile(r"### Usuario:\s*(.*?)\s*### JARVIS:\s*(.*)", re.DOTALL)
 
 
-def load_pairs(root: Path):
+def load_pairs(root: Path, include_generated: bool = False):
     examples = []
     for path in sorted(root.rglob("*.jsonl")):
+        if not include_generated and path.name == "zz_generated_curriculum.jsonl":
+            continue
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
             try:
                 record = json.loads(line)
@@ -66,6 +68,11 @@ def main():
     parser.add_argument("--data", default="data/seed")
     parser.add_argument("--config", default="brain/sft-config.json")
     parser.add_argument("--out", default="checkpoints/jarvis-sft.pt")
+    parser.add_argument(
+        "--include-generated",
+        action="store_true",
+        help="Include synthetic arithmetic examples in SFT (excluded by default).",
+    )
     args = parser.parse_args()
 
     config = json.loads(Path(args.config).read_text(encoding="utf-8"))
@@ -75,7 +82,7 @@ def main():
     model_config = pretrained["config"]
     context = int(model_config["context"])
     tokenizer = ByteTokenizer()
-    raw_examples = load_pairs(Path(args.data))
+    raw_examples = load_pairs(Path(args.data), include_generated=args.include_generated)
     random.Random(int(config.get("seed", 20261030))).shuffle(raw_examples)
     validation_count = max(1, round(len(raw_examples) * 0.10))
     validation_raw = raw_examples[:validation_count]
@@ -134,7 +141,8 @@ def main():
     parameter_count = sum(p.numel() for p in model.parameters())
     print(
         f"JARVIS SFT | device={device} | params={parameter_count:,} | "
-        f"train_pairs={len(train_examples)} | validation_pairs={len(validation_examples)}",
+        f"train_pairs={len(train_examples)} | validation_pairs={len(validation_examples)} | "
+        f"synthetic_examples={'included' if args.include_generated else 'excluded'}",
         flush=True,
     )
     started = time.time()
