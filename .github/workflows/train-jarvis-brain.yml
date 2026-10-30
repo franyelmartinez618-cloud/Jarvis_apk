@@ -43,7 +43,11 @@ jobs:
         run: |
           python brain/train.py --config brain/config.json --data data/processed/corpus.txt --out checkpoints/jarvis.pt
 
-      - name: Exportar checkpoint al formato JARVIS01
+      - name: Ajustar el modelo a instrucciones de JARVIS
+        run: |
+          python brain/train_sft.py --checkpoint checkpoints/jarvis.pt --data data/seed --config brain/sft-config.json --out checkpoints/jarvis-sft.pt
+
+      - name: Exportar checkpoint ajustado al formato JARVIS01
         run: |
           python brain/export_android.py --checkpoint checkpoints/jarvis.pt --output brain/artifacts/jarvis-brain.bin
           python -m json.tool brain/artifacts/jarvis-brain.json
@@ -54,6 +58,10 @@ jobs:
           name: jarvis-brain-training-experiment
           path: |
             checkpoints/jarvis.pt
+            checkpoints/jarvis-last.pt
+            checkpoints/jarvis.metrics.jsonl
+            checkpoints/jarvis-sft.pt
+            checkpoints/jarvis-sft-last.pt
             brain/artifacts/jarvis-brain.bin
             brain/artifacts/jarvis-brain.json
           if-no-files-found: error
