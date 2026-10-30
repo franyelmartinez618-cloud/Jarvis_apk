@@ -77,6 +77,19 @@ jobs:
           grep -q 'text.contains("jarvis")' "$PROJECT/app/src/main/java/com/jarvis/personal/WakeWordListener.kt"
           echo "JARVIS_PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
+      - name: Diagnóstico temporal de fuentes Android generadas
+        if: ${{ github.ref == 'refs/heads/feat/jarvis-local-brain-agent-20261029' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-generated-source
+          path: |
+            ${{ runner.temp }}/jarvis-src/jarvis-android/app/build.gradle.kts
+            ${{ runner.temp }}/jarvis-src/jarvis-android/app/src/main/AndroidManifest.xml
+            ${{ runner.temp }}/jarvis-src/jarvis-android/app/src/main/java/com/jarvis/personal/
+            ${{ runner.temp }}/jarvis-src/jarvis-android/app/src/main/res/
+          if-no-files-found: error
+          retention-days: 2
+
       - name: Descargar modelo de español para activación offline
         shell: bash
         run: |
