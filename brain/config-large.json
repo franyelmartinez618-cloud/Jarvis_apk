@@ -20,7 +20,7 @@
   "log_every": 500,
   "eval_batches": 32,
   "bf16": true,
-  "minimum_train_bytes": 1000000000,
+  "minimum_train_bytes": 900000000,
   "minimum_validation_bytes": 100000000,
   "seed": 20261030
 }
