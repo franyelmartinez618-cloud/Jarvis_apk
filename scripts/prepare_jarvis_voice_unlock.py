@@ -332,7 +332,7 @@ cockpit = r'''        val scroll = ScrollView(this).apply {
         root.addView(TextView(this).apply {
             text = "NO GEMINI  /  NO API CONVERSACIONAL REMOTA\nMicrófono y permisos bajo control de Android."
             textSize = 9f
-            lineSpacing = dp(3).toFloat()
+            setLineSpacing(dp(3).toFloat(), 1f)
             letterSpacing = 0.04f
             gravity = Gravity.CENTER
             setTextColor(Color.parseColor("#748A9A"))
@@ -582,7 +582,7 @@ new_tail = r'''    private fun refreshUi() {
     }
 '''
 main, count = re.subn(
-    r'(?ms)^    private fun refreshUi\(\) \{.*(?=^})',
+    r'(?ms)^    private fun refreshUi\(\) \{.*?(?=^    private fun requestBackgroundReliability\(\))',
     lambda _: new_tail,
     main,
     count=1
