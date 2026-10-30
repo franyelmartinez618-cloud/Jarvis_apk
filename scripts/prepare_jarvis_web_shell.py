@@ -52,8 +52,9 @@ tree.write(manifest_path, encoding="utf-8", xml_declaration=True)
 java_root = root / "app/src/main/java/com/jarvis/personal"
 if java_root.exists():
     keep = {"MainActivity.kt", "JarvisAccessibilityService.kt"}
-    for path in java_root.glob("*.kt"):
-        if path.name not in keep:
+    keep_paths = {java_root / name for name in keep}
+    for path in java_root.rglob("*.kt"):
+        if path not in keep_paths:
             path.unlink()
 sherpa_root = root / "app/src/main/java/com/k2fsa"
 if sherpa_root.exists():
