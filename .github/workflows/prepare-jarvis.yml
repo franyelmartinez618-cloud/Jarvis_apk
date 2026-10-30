@@ -78,7 +78,7 @@ jobs:
           echo "JARVIS_PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
       - name: Diagnóstico temporal de fuentes Android generadas
-        if: ${{ github.ref == 'refs/heads/feat/jarvis-local-brain-agent-20261029' }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-generated-source
