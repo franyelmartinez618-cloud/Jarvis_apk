@@ -301,6 +301,8 @@ tool_methods = r'''    fun openAppFromModel(name: String): String {
                 Intent(Settings.ACTION_WIFI_SETTINGS)
             normalized.contains("bluetooth") ->
                 Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+            normalized.contains("brillo") || normalized.contains("ajustes del sistema") ->
+                Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + packageName))
             normalized.contains("notificacion") ->
                 Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
             else -> Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + packageName))
@@ -826,6 +828,12 @@ contacts_path.write_text(contacts, encoding="utf-8")
 # Android permissions: regular runtime permissions are requested after each app upgrade if they are missing;
 # special grants must be switched on by the user in Android Settings.
 main = main_path.read_text(encoding="utf-8")
+if "add(Manifest.permission.CAMERA)" not in main:
+    main = main.replace(
+        "            add(Manifest.permission.RECORD_AUDIO)",
+        "            add(Manifest.permission.CAMERA)\n            add(Manifest.permission.RECORD_AUDIO)",
+        1
+    )
 if "import java.io.File" not in main:
     main = main.replace("package com.jarvis.personal\n", "package com.jarvis.personal\nimport java.io.File\n", 1)
 
@@ -957,6 +965,7 @@ permission_methods = r'''    private fun auditRuntimePermissionsAfterUpgrade() {
         }
         val names = missing.map { permission ->
             when (permission) {
+                Manifest.permission.CAMERA -> "Cámara (necesaria para controlar la linterna)"
                 Manifest.permission.RECORD_AUDIO -> "Micrófono (necesario para hablar con Jarvis)"
                 Manifest.permission.READ_CONTACTS -> "Contactos (buscar familiares y conocidos)"
                 Manifest.permission.CALL_PHONE -> "Llamadas (llamar después de confirmar)"
@@ -981,7 +990,8 @@ permission_methods = r'''    private fun auditRuntimePermissionsAfterUpgrade() {
                     ?.contains(packageName) == true
         } catch (_: Exception) { false }
         val overlayEnabled = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)
-        if (!accessibilityEnabled || !overlayEnabled) {
+        val writeSettingsEnabled = Build.VERSION.SDK_INT < 23 || Settings.System.canWrite(this)
+        if (!accessibilityEnabled || !overlayEnabled || !writeSettingsEnabled) {
             AlertDialog.Builder(this)
                 .setTitle("JARVIS · Activar control avanzado")
                 .setMessage("Para tocar botones, escribir y leer pantallas de otras apps, activa Control de pantalla en Accesibilidad. Mostrar sobre otras apps puede ayudar a abrir interfaces desde segundo plano. Android no permite que Jarvis active estos accesos por sí solo.")
@@ -997,6 +1007,7 @@ permission_methods = r'''    private fun auditRuntimePermissionsAfterUpgrade() {
             "Activar Control de pantalla (Accesibilidad)",
             "Permitir Mostrar sobre otras apps",
             "Permitir actividad en segundo plano (Batería)",
+            "Permitir modificar ajustes del sistema (brillo)",
             "Abrir permisos de Jarvis en Android"
         )
         AlertDialog.Builder(this)
@@ -1009,7 +1020,9 @@ permission_methods = r'''    private fun auditRuntimePermissionsAfterUpgrade() {
                     2 -> try { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + packageName))) }
                          catch (e: Exception) { openAppSettings() }
                     3 -> requestBackgroundReliability()
-                    4 -> openAppSettings()
+                    4 -> try { startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + packageName))) }
+                         catch (e: Exception) { openAppSettings() }
+                    5 -> openAppSettings()
                 }
             }
             .setNegativeButton("CERRAR", null)
@@ -1055,6 +1068,18 @@ if "libOpenCL.so" not in manifest:
     if app_end not in manifest:
         raise SystemExit("No se encontró el final de los atributos de application en el manifiesto.")
     manifest = manifest.replace(app_end, app_end + "\n" + native_lines, 1)
+if "android.permission.CAMERA" not in manifest:
+    manifest = manifest.replace(
+        '    <uses-permission android:name="android.permission.INTERNET" />',
+        '    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CAMERA" />',
+        1
+    )
+if "android.permission.WRITE_SETTINGS" not in manifest:
+    manifest = manifest.replace(
+        '    <uses-permission android:name="android.permission.INTERNET" />',
+        '    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.WRITE_SETTINGS" />',
+        1
+    )
 if "com.android.alarm.permission.SET_ALARM" not in manifest:
     manifest = manifest.replace(
         '    <uses-permission android:name="android.permission.RECORD_AUDIO" />',
