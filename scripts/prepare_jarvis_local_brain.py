@@ -44,6 +44,11 @@ package_line = "package com.jarvis.personal\n"
 imports = [
     "import android.app.ActivityManager",
     "import android.os.StatFs",
+    "import android.provider.AlarmClock",
+    "import android.provider.CalendarContract",
+    "import android.provider.MediaStore",
+    "import android.hardware.camera2.CameraCharacteristics",
+    "import android.hardware.camera2.CameraManager",
     "import java.net.HttpURLConnection",
     "import java.net.URL",
     "import java.net.URL",
@@ -510,6 +515,133 @@ service = service[:start] + respond + service[end:]
 # If the Vosk service starts but the LLM is still loading, keep the voice path available and retry.
 # The notification is updated when the local brain becomes ready.
 service_path.write_text(service, encoding="utf-8")
+
+phone_action_methods = r'''    fun setAlarmForModel(hour: Int, minute: Int, label: String): String {
+        if (hour !in 0..23 || minute !in 0..59) return "La hora de la alarma no es válida."
+        return try {
+            val intent = Intent(AlarmClock.ACTION_SET_ALARM)
+                .putExtra(AlarmClock.EXTRA_HOUR, hour)
+                .putExtra(AlarmClock.EXTRA_MINUTES, minute)
+                .putExtra(AlarmClock.EXTRA_MESSAGE, label.ifBlank { "JARVIS" })
+                .putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            "Abrí el reloj con una alarma para las " + "%02d:%02d".format(hour, minute) + ". Confirma y guarda la alarma allí."
+        } catch (e: Exception) {
+            Log.e(TAG, "No se pudo abrir la alarma", e)
+            "No encontré una aplicación de reloj compatible."
+        }
+    }
+
+    fun setTimerForModel(seconds: Int, label: String): String {
+        if (seconds !in 1..86400) return "El temporizador debe durar entre un segundo y 24 horas."
+        return try {
+            val intent = Intent(AlarmClock.ACTION_SET_TIMER)
+                .putExtra(AlarmClock.EXTRA_LENGTH, seconds)
+                .putExtra(AlarmClock.EXTRA_MESSAGE, label.ifBlank { "JARVIS" })
+                .putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            "Abrí el temporizador por " + seconds + " segundos. Confirma el inicio en el reloj."
+        } catch (e: Exception) {
+            Log.e(TAG, "No se pudo abrir el temporizador", e)
+            "No encontré una aplicación de reloj compatible."
+        }
+    }
+
+    fun openCameraForModel(): String = try {
+        startActivity(Intent(MediaStore.ACTION_IMAGE_CAPTURE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        "Abrí la cámara."
+    } catch (e: Exception) {
+        Log.e(TAG, "No se pudo abrir la cámara", e)
+        "No encontré una aplicación de cámara compatible."
+    }
+
+    fun openMapsForModel(place: String): String {
+        if (place.isBlank()) return "Dime el lugar o la dirección que buscas."
+        return try {
+            val uri = Uri.parse("geo:0,0?q=" + URLEncoder.encode(place, "UTF-8"))
+            startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            "Abrí el mapa para buscar " + place + "."
+        } catch (e: Exception) {
+            Log.e(TAG, "No se pudo abrir el mapa", e)
+            "No pude abrir una aplicación de mapas."
+        }
+    }
+
+    fun createCalendarEventForModel(title: String, minutesFromNow: Int, durationMinutes: Int, note: String): String {
+        if (title.isBlank()) return "Falta el título del evento."
+        if (minutesFromNow !in 0..525600 || durationMinutes !in 1..1440) return "La fecha o la duración no es válida."
+        return try {
+            val begin = System.currentTimeMillis() + minutesFromNow.toLong() * 60_000L
+            val end = begin + durationMinutes.toLong() * 60_000L
+            val intent = Intent(Intent.ACTION_INSERT, CalendarContract.Events.CONTENT_URI)
+                .putExtra(CalendarContract.Events.TITLE, title)
+                .putExtra(CalendarContract.Events.DESCRIPTION, note)
+                .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
+                .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            "Abrí el calendario con el evento «" + title + "». Revisa la fecha y pulsa Guardar."
+        } catch (e: Exception) {
+            Log.e(TAG, "No se pudo crear el evento", e)
+            "No encontré una aplicación de calendario compatible."
+        }
+    }
+
+    fun setMediaVolumeForModel(percent: Int): String {
+        if (percent !in 0..100) return "El volumen debe estar entre cero y cien por ciento."
+        return try {
+            val audio = getSystemService(AudioManager::class.java)
+            val maximum = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            val value = (maximum * percent / 100f).toInt().coerceIn(0, maximum)
+            audio.setStreamVolume(AudioManager.STREAM_MUSIC, value, AudioManager.FLAG_SHOW_UI)
+            "Ajusté el volumen multimedia al " + percent + " por ciento."
+        } catch (e: Exception) {
+            Log.e(TAG, "No se pudo cambiar el volumen", e)
+            "Android no permitió modificar el volumen."
+        }
+    }
+
+    fun setTorchForModel(enabled: Boolean): String {
+        if (!has(Manifest.permission.CAMERA)) return "PERMISO_PENDIENTE: activa Cámara para poder controlar la linterna."
+        return try {
+            val camera = getSystemService(CameraManager::class.java)
+            val id = camera.cameraIdList.firstOrNull {
+                camera.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            } ?: return "Este teléfono no informa de un flash compatible."
+            camera.setTorchMode(id, enabled)
+            if (enabled) "Encendí la linterna." else "Apagué la linterna."
+        } catch (e: Exception) {
+            Log.e(TAG, "No se pudo controlar la linterna", e)
+            "Android no permitió controlar la linterna. Comprueba el permiso de cámara."
+        }
+    }
+
+    fun setScreenBrightnessForModel(percent: Int): String {
+        if (percent !in 1..100) return "El brillo debe estar entre uno y cien por ciento."
+        if (!Settings.System.canWrite(this)) {
+            return try {
+                startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + packageName))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                "Android abrió el permiso Modificar ajustes del sistema. Actívalo y vuelve a pedirme el brillo."
+            } catch (e: Exception) {
+                "Abre Ajustes de Jarvis y permite Modificar ajustes del sistema."
+            }
+        }
+        return try {
+            Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+            Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, (percent * 255 / 100).coerceIn(1, 255))
+            "Ajusté el brillo de la pantalla al " + percent + " por ciento."
+        } catch (e: Exception) {
+            Log.e(TAG, "No se pudo ajustar el brillo", e)
+            "Android no permitió cambiar el brillo."
+        }
+    }
+
+'''
+if "fun setAlarmForModel(" not in service:
+    service = service.replace("    private suspend fun runPendingModelAction() {", phone_action_methods + "    private suspend fun runPendingModelAction() {", 1)
 
 # Add the local tool bridge. Sensitive actions are queued and the existing call/message confirmation flow handles them.
 tools_path = root / "app/src/main/java/com/jarvis/personal/JarvisTools.kt"
