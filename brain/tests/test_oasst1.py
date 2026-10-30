@@ -34,6 +34,8 @@ class OASSTPreparationTests(unittest.TestCase):
         self.assertIn("¿Cómo funciona una API", result[0]["text"])
         self.assertIn("Una API define operaciones", result[0]["text"])
         self.assertEqual(result[0]["group_id"], "tree-1")
+        self.assertIn("\\n### JARVIS:\\n", result[0]["text"])
+        self.assertNotIn("\\\\n", result[0]["text"])
 
     def test_pii_and_unreviewed_messages_are_rejected(self):
         pii = message("p1", None, "prompter", "Quiero compartir información personal.", labels={"pii": {"value": 1.0, "count": 2}})
