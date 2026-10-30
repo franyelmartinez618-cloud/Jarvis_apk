@@ -84,6 +84,8 @@ jobs:
           name: jarvis-generated-source
           path: |
             ${{ runner.temp }}/jarvis-src/jarvis-android/app/build.gradle.kts
+            ${{ runner.temp }}/jarvis-src/jarvis-android/build.gradle.kts
+            ${{ runner.temp }}/jarvis-src/jarvis-android/settings.gradle.kts
             ${{ runner.temp }}/jarvis-src/jarvis-android/app/src/main/AndroidManifest.xml
             ${{ runner.temp }}/jarvis-src/jarvis-android/app/src/main/java/com/jarvis/personal/
             ${{ runner.temp }}/jarvis-src/jarvis-android/app/src/main/res/
