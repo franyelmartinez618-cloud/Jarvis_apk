@@ -1,0 +1,26 @@
+{
+  "context": 1024,
+  "width": 512,
+  "layers": 12,
+  "heads": 8,
+  "dropout": 0.1,
+  "batch_size": 2,
+  "gradient_accumulation": 16,
+  "steps": 100000,
+  "warmup_steps": 3000,
+  "patience": 0,
+  "learning_rate": 0.0003,
+  "min_learning_rate": 0.00003,
+  "weight_decay": 0.1,
+  "betas": [
+    0.9,
+    0.95
+  ],
+  "grad_clip": 1,
+  "log_every": 500,
+  "eval_batches": 32,
+  "bf16": true,
+  "minimum_train_bytes": 1000000000,
+  "minimum_validation_bytes": 100000000,
+  "seed": 20261030
+}
