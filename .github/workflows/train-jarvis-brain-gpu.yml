@@ -31,6 +31,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r brain/requirements.txt
 
+      - name: Generar ejercicios originales de razonamiento
+        run: python brain/generate_curriculum.py --output data/seed/zz_generated_curriculum.jsonl --count 3000
+
       - name: Construir y auditar corpus
         run: |
           test -d data/raw
