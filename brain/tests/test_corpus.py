@@ -13,7 +13,7 @@ class CorpusProvenanceTests(unittest.TestCase):
                 {"text": "Turno dos de una conversación.", "group_id": "tree-a"},
                 {"text": "Otra conversación independiente.", "group_id": "tree-b"},
             ]
-            path.write_text("".join(json.dumps(item) + "\\n" for item in records), encoding="utf-8")
+            path.write_text("".join(json.dumps(item) + "\n" for item in records), encoding="utf-8")
             documents = list(iter_text(path))
             self.assertEqual(len(documents), 2)
             self.assertIn("Turno uno", documents[0])
