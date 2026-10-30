@@ -1,0 +1,60 @@
+name: Entrenar cerebro propio de JARVIS
+
+on:
+  push:
+    branches:
+      - feat/jarvis-native-brain-and-web-runtime-20261030
+    paths:
+      - "brain/**"
+      - "data/seed/**"
+      - ".github/workflows/train-jarvis-brain.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  train:
+    name: Entrenamiento experimental desde pesos aleatorios
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: brain/requirements.txt
+
+      - name: Instalar PyTorch CPU
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu -r brain/requirements.txt
+
+      - name: Construir corpus original JARVIS
+        run: |
+          python brain/prepare_corpus.py --input data/seed --output data/processed/corpus.txt
+          python -c "from pathlib import Path; p=Path('data/processed/corpus.txt'); print(f'Corpus JARVIS: {p.stat().st_size:,} bytes'); assert p.stat().st_size >= 768"
+
+      - name: Entrenar Transformer desde inicialización aleatoria
+        run: |
+          python brain/train.py --config brain/config.json --data data/processed/corpus.txt --out checkpoints/jarvis.pt
+
+      - name: Exportar checkpoint al formato JARVIS01
+        run: |
+          python brain/export_android.py --checkpoint checkpoints/jarvis.pt --output brain/artifacts/jarvis-brain.bin
+          python -m json.tool brain/artifacts/jarvis-brain.json
+
+      - name: Publicar checkpoint experimental para evaluación
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-brain-training-experiment
+          path: |
+            checkpoints/jarvis.pt
+            brain/artifacts/jarvis-brain.bin
+            brain/artifacts/jarvis-brain.json
+          if-no-files-found: error
+          retention-days: 14
