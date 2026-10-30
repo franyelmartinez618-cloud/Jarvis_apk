@@ -135,7 +135,12 @@ def main():
         measurements = []
         for _ in range(eval_batches):
             inputs, targets = make_batch(validation_ids)
-            autocast = (torch.autocast(device_type="cuda", dtype=amp_dtype)\n                        if device == "cuda" else nullcontext())\n            with autocast:\n                _, loss = model(inputs, targets)
+            autocast = (
+                torch.autocast(device_type="cuda", dtype=amp_dtype)
+                if device == "cuda" else nullcontext()
+            )
+            with autocast:
+                _, loss = model(inputs, targets)
             measurements.append(float(loss.item()))
         model.train()
         return sum(measurements) / len(measurements)
