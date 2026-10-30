@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#07121d">
+  <meta name="description" content="J.A.R.V.I.S.: asistente personal con cerebro local propio.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Jarvis</title>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-orb" aria-hidden="true"><span>J</span></div>
+        <div class="brand-copy">
+          <div class="brand-name">JARVIS</div>
+          <div class="brand-subtitle">ASISTENTE PERSONAL</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="privacy-pill"><span class="pulse"></span> LOCAL · PRIVADO</div>
+        <button id="menuButton" class="icon-button" aria-label="Opciones" title="Opciones">⋯</button>
+      </div>
+    </header>
+
+    <section id="welcome" class="welcome">
+      <div class="hero-orb" aria-hidden="true"><div class="hero-core">J</div></div>
+      <div class="eyebrow">NÚCLEO LOCAL ACTIVO</div>
+      <h1>¿Qué hacemos<br><span>hoy?</span></h1>
+      <p>Converse conmigo con naturalidad. Mi biblioteca de conocimiento y memoria funcionan en este dispositivo.</p>
+      <div class="suggestions">
+        <button class="suggestion" data-prompt="¿Qué puedes hacer?"><span>✦</span> Qué puedes hacer</button>
+        <button class="suggestion" data-prompt="Abre Chrome"><span>↗</span> Abrir una aplicación</button>
+        <button class="suggestion" data-prompt="Lee la pantalla"><span>▤</span> Leer mi pantalla</button>
+      </div>
+    </section>
+
+    <section id="chat" class="chat" aria-live="polite" aria-label="Conversación">
+      <div id="messages" class="messages"></div>
+    </section>
+
+    <footer class="composer-wrap">
+      <div id="menuPanel" class="menu-panel hidden">
+        <button id="newChatButton">＋ Nueva conversación</button>
+        <button id="memoryButton">◈ Qué recuerda Jarvis</button>
+        <button id="accessibilityButton">▣ Activar control de pantalla</button>
+        <button id="voiceButton">◖ Voz británica masculina: activada</button>
+        <div class="menu-note">La conversación y la memoria se guardan en este dispositivo.</div>
+      </div>
+      <div class="composer">
+        <textarea id="messageInput" rows="1" maxlength="2000" placeholder="Escribe un mensaje a Jarvis…" aria-label="Escribe un mensaje"></textarea>
+        <button id="sendButton" class="send-button" aria-label="Enviar mensaje" title="Enviar">➤</button>
+      </div>
+      <div class="composer-meta">
+        <span><i class="lock">◆</i> Procesamiento local · Sin IA en la nube</span>
+        <span id="buildLabel">WEB 1</span>
+      </div>
+    </footer>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="./brain.js" defer></script>
+  <script src="./app.js" defer></script>
+</body>
+</html>
