@@ -74,6 +74,7 @@ fields = (
     "    @Volatile private var brainConversation: Conversation? = null\n"
     "    private val brainMutex = Mutex()\n"
     "    @Volatile private var pendingModelAction: PendingModelAction? = null\n"
+    "    @Volatile private var lastOpenedAppLabel: String? = null\n"
     "    private data class PendingModelAction(val kind: String, val target: String, val body: String? = null)\n"
 )
 if "private var brainEngine: Engine?" not in service:
@@ -185,6 +186,7 @@ tool_methods = r'''    fun openAppFromModel(name: String): String {
         try {
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(launch)
+            lastOpenedAppLabel = label
             return "He abierto " + label + "."
         } catch (e: Exception) {
             Log.w(TAG, "Android bloqueó el inicio directo de " + label, e)
@@ -201,11 +203,45 @@ tool_methods = r'''    fun openAppFromModel(name: String): String {
                     .setAutoCancel(true)
                     .build()
                 getSystemService(NotificationManager::class.java).notify(42, notice)
+                lastOpenedAppLabel = label
                 return "Android no permitió abrirla directamente desde segundo plano. Dejé una notificación; tócala para abrir " + label + "."
             } catch (notifyError: Exception) {
                 Log.e(TAG, "No se pudo crear la notificación de apertura", notifyError)
                 return "Android bloqueó la apertura de " + label + ". Trae Jarvis al frente y repite la orden."
             }
+        }
+    }
+
+    private suspend fun searchInsideAppForModel(appLabel: String, query: String): String {
+        if (query.isBlank()) return "Dime qué quieres buscar dentro de " + appLabel + "."
+        if (!JarvisAccessibilityService.isConnected()) {
+            return "Abrí " + appLabel + ", pero para buscar dentro de esa aplicación necesito que actives Control de pantalla en Ajustes > Accesibilidad. No abrí el navegador."
+        }
+        delay(900)
+        val searchControls = listOf(
+            "Buscar", "Search", "Buscar chats", "Search chats",
+            "Buscar mensajes", "Buscar o empezar un chat", "Search or start a new chat"
+        )
+        var searchOpened = false
+        for (control in searchControls) {
+            if (JarvisAccessibilityService.clickByText(control)) {
+                searchOpened = true
+                break
+            }
+        }
+        if (!searchOpened) {
+            return "Abrí " + appLabel + ", pero no pude identificar su botón de búsqueda en la pantalla. No voy a sustituir tu orden por una búsqueda web."
+        }
+        delay(350)
+        if (!JarvisAccessibilityService.typeIntoFocusedField(query)) {
+            return "Abrí el buscador de " + appLabel + ", pero no pude escribir el texto. Selecciona el campo de búsqueda y vuelve a decírmelo."
+        }
+        delay(500)
+        val visible = JarvisAccessibilityService.readScreen().orEmpty()
+        return if (visible.contains(query, ignoreCase = true)) {
+            "Escribí «" + query + "» en la búsqueda de " + appLabel + ". Revisa los resultados que muestra la aplicación."
+        } else {
+            "Escribí «" + query + "» en el buscador de " + appLabel + ". La aplicación está mostrando sus resultados."
         }
     }
 
@@ -545,6 +581,20 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
         val text = strip(raw).lowercase().replace(Regex("[¿?¡!.,;]"), " ").trim()
         if (text.isBlank()) return false
 
+        // Keep compound requests together. "Open WhatsApp and search for X" is one intent plan.
+        val openAndSearch = Regex("^(?:por favor )?(?:abre|abrime|abri|abrir|inicia|iniciar|ejecuta|ejecutar|lanza|arranca|ponme|quiero abrir)\\s+(?:la app |la aplicacion |aplicacion |app |el juego |el )?(.+?)\\s+(?:y luego|y|luego|despues|después|para)\\s+(?:busca|buscar|encuentra|localiza)\\s+(.+)$").find(text)
+        if (openAndSearch != null) {
+            val appName = openAndSearch.groupValues[1].trim()
+            val query = openAndSearch.groupValues[2].trim().removePrefix("a ").trim()
+            val opened = openAppFromModel(appName)
+            if (opened.startsWith("He abierto ")) {
+                speak(opened + " " + searchInsideAppForModel(appName, query))
+            } else {
+                speak(opened)
+            }
+            return true
+        }
+
         // Camera and flashlight.
         if (Regex("\\b(abre|abrir|inicia|iniciar|enciende|abreme)\\b.*\\b(camara|camara del telefono)\\b").containsMatchIn(text) ||
             Regex("\\b(toma|saca|haz)\\s+(una\\s+)?foto\\b").containsMatchIn(text)) {
@@ -614,10 +664,42 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
             speak(openMapsForModel(destination.groupValues[1].trim()))
             return true
         }
-        val search = Regex("^(?:busca|buscar|buscame|investiga|consulta)\\s+(.+?)(?:\\s+en\\s+(?:google|internet|la web|web))?$")
+        // Web is a destination only when the speaker explicitly names it.
+        val webSearchAfter = Regex("^(?:busca|buscar|buscame|investiga|consulta)\\s+(.+?)\\s+en\\s+(?:google|internet|la web|web|el navegador)$")
             .find(text)
-        if (search != null) {
-            speak(searchWebForModel(search.groupValues[1].trim()))
+        val webSearchBefore = Regex("^(?:busca|buscar|buscame|investiga|consulta)\\s+(?:en\\s+)?(?:google|internet|la web|web|el navegador)\\s+(.+)$")
+            .find(text)
+        val webQuery = webSearchAfter?.groupValues?.get(1) ?: webSearchBefore?.groupValues?.get(1)
+        if (!webQuery.isNullOrBlank()) {
+            speak(searchWebForModel(webQuery.trim().removePrefix("a ").trim()))
+            return true
+        }
+
+        // Explicit in-app search: "find my brother in WhatsApp".
+        val appSearch = Regex("^(?:busca|buscar|buscame|encuentra|localiza)\\s+(.+?)\\s+(?:en|dentro de)\\s+(?:la app |la aplicacion |app |aplicacion )?(.+)$")
+            .find(text)
+        if (appSearch != null) {
+            val query = appSearch.groupValues[1].trim().removePrefix("a ").trim()
+            val appName = appSearch.groupValues[2].trim()
+            val opened = openAppFromModel(appName)
+            if (opened.startsWith("He abierto ")) {
+                speak(opened + " " + searchInsideAppForModel(appName, query))
+            } else {
+                speak(opened)
+            }
+            return true
+        }
+
+        // If ASR separates the sentence after opening an app, keep the app as the search context.
+        val generalSearch = Regex("^(?:busca|buscar|buscame|encuentra|localiza)\\s+(.+)$").find(text)
+        if (generalSearch != null) {
+            val query = generalSearch.groupValues[1].trim().removePrefix("a ").trim()
+            val activeApp = lastOpenedAppLabel
+            if (!activeApp.isNullOrBlank()) {
+                speak(searchInsideAppForModel(activeApp, query))
+            } else {
+                speak("¿Dónde quieres que lo busque: dentro de una aplicación o en Internet? No abriré la web sin que me lo indiques.")
+            }
             return true
         }
 
