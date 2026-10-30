@@ -44,3 +44,15 @@ No se declara AGI, conocimiento ilimitado ni control total del dispositivo. La p
 
 ## Primer entrenamiento propio (2026-10-30)
 Se completó un experimento desde pesos aleatorios: 2.500 pasos sobre 48 ejemplos originales, pérdida de validación 1.7612 y exportación `JARVIS01` correcta. La prueba cualitativa produjo respuestas incoherentes, por lo que ese checkpoint NO se incluye en la APK. El detalle y las decisiones están en [brain/EXPERIMENT_2026-10-30.md](brain/EXPERIMENT_2026-10-30.md). La APK de la rama usa el runtime propio y el índice semilla, sin modelo conversacional externo.
+
+
+
+## Escalado del cerebro propio (30-10-2026)
+- Se amplió el corpus original con 69 ejemplos curriculares adicionales de ciencia, matemáticas, informática, seguridad y planificación.
+- El entrenamiento ahora separa documentos completos para validación, aprende tokens BOS/EOS, acumula gradientes, usa calentamiento y decaimiento coseno, registra perplejidad y guarda checkpoints reanudables.
+- Se añadieron perfiles de investigación móvil (6 capas/256) y grande (12 capas/512/contexto 1024), además de un workflow GPU específico.
+- El perfil grande requiere al menos 1,1 GB de corpus autorizado y un runner Linux con GPU NVIDIA. Los runners CPU de GitHub no pueden entrenarlo a escala grande.
+- Los archivos externos requieren registro individual de licencia, autorización de entrenamiento y uso comercial. No se incorporan fuentes NC o SA automáticamente.
+- El entrenamiento de prueba del corpus semilla se ejecuta automáticamente en Actions. Su checkpoint no se integra en la APK sin evaluación cualitativa satisfactoria.
+
+Consulta [brain/README.md](brain/README.md) y [data/raw/README.md](data/raw/README.md) para los requisitos y el procedimiento.
