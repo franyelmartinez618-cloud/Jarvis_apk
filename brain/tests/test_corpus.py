@@ -1,10 +1,24 @@
 import unittest
 from pathlib import Path
 
-from prepare_corpus import provenance_for
+from prepare_corpus import iter_text, provenance_for
 
 
 class CorpusProvenanceTests(unittest.TestCase):
+    def test_oasst_messages_are_grouped_by_conversation_for_pretraining(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "messages.jsonl"
+            records = [
+                {"text": "Turno uno de una conversación.", "group_id": "tree-a"},
+                {"text": "Turno dos de una conversación.", "group_id": "tree-a"},
+                {"text": "Otra conversación independiente.", "group_id": "tree-b"},
+            ]
+            path.write_text("".join(json.dumps(item) + "\\n" for item in records), encoding="utf-8")
+            documents = list(iter_text(path))
+            self.assertEqual(len(documents), 2)
+            self.assertIn("Turno uno", documents[0])
+            self.assertIn("Turno dos", documents[0])
+
     def test_seed_is_marked_as_original_project_material(self):
         provenance = provenance_for(Path("data/seed/sample.txt"), Path("data/seed"), None)
         self.assertEqual(provenance["license"], "Owner-Created")
