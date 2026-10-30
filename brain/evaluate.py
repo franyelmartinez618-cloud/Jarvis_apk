@@ -9,6 +9,10 @@ from model import JarvisGPT
 from tokenizer import BOS, EOS, PAD, ByteTokenizer
 
 
+def format_prompt(question):
+    return f"### Usuario:\n{question}\n### JARVIS:\n"
+
+
 def apply_repetition_penalty(logits, history, penalty=1.2, window=64):
     if penalty <= 1.0 or not history:
         return logits.clone()
@@ -64,7 +68,7 @@ def main():
     ]
     results = []
     for question_index, item in enumerate(questions):
-        prompt = f"### Usuario:\\n{item['question']}\\n### JARVIS:\\n"
+        prompt = format_prompt(item["question"])
         ids = [BOS] + tokenizer.encode(prompt)
         generated = []
         generator = torch.Generator(device="cpu").manual_seed(args.seed + question_index)

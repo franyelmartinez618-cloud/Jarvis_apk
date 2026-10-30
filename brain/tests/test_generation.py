@@ -1,10 +1,16 @@
 import unittest
 import torch
 
-from evaluate import apply_repetition_penalty, sample_next_token
+from evaluate import apply_repetition_penalty, format_prompt, sample_next_token
 
 
 class GenerationTests(unittest.TestCase):
+    def test_prompt_uses_real_newlines(self):
+        self.assertEqual(
+            format_prompt("¿Qué es una API?"),
+            "### Usuario:\n¿Qué es una API?\n### JARVIS:\n",
+        )
+
     def test_repetition_penalty_reduces_recent_token_scores(self):
         logits = torch.tensor([1.0, 2.0, -2.0, 0.5])
         adjusted = apply_repetition_penalty(logits, [1, 2], penalty=1.2)
