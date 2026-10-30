@@ -29,7 +29,7 @@
   }
   function normalize(value) {
     return String(value || "").toLocaleLowerCase("es").normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "").replace(/[¿?¡!.,;:()[\]{}]/g, " ")
+      .replace(/[\u0300-\u036f]/g, "").replace(/[¿?¡!.,;:\[\](){}]/g, " ")
       .replace(/\s+/g, " ").trim();
   }
   function showToast(text) {
