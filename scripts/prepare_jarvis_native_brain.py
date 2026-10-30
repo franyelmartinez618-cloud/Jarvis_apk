@@ -162,10 +162,14 @@ shutil.copyfile(source, destination)
 # A trained checkpoint is optional until the first from-scratch training run is completed.
 assets = root / "app/src/main/assets"
 assets.mkdir(parents=True, exist_ok=True)
-seed_corpus = repo / "data/seed/jarvis_core.jsonl"
-if not seed_corpus.is_file():
+seed_directory = repo / "data/seed"
+seed_files = sorted(seed_directory.glob("*.jsonl"))
+if not seed_files:
     raise SystemExit("Falta el corpus semilla original de JARVIS.")
-shutil.copyfile(seed_corpus, assets / "jarvis-knowledge.jsonl")
+with (assets / "jarvis-knowledge.jsonl").open("wb") as bundled:
+    for seed_file in seed_files:
+        with seed_file.open("rb") as source_file:
+            shutil.copyfileobj(source_file, bundled)
 
 checkpoint = repo / "brain/artifacts/jarvis-brain.bin"
 target = assets / "jarvis-brain.bin"
