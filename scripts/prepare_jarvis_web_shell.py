@@ -64,7 +64,7 @@ gradle_path = next((path for path in gradle_candidates if path.exists()), None)
 if gradle_path:
     gradle_text = gradle_path.read_text(encoding="utf-8")
     gradle_text = __import__("re").sub(
-        r'(?m)^\\s*implementation\\(["\\']com\\.alphacephei:vosk-android:[^"\\']+["\\']\\)\\s*\\n',
+        r'(?m)^\s*implementation\(["\']com\.alphacephei:vosk-android:[^"\']+["\']\)\s*\n',
         "",
         gradle_text,
     )
