@@ -48,7 +48,7 @@ jobs:
           lines = text.splitlines()
           found = False
           for index, line in enumerate(lines):
-                  lines[index] = r'        private const val GRAMMAR = "[\"jarvis\", \"hola jarvis\", \"oye jarvis\", \"ey jarvis\", \"jarvis estas ahi\", \"jarvis estas despierto\", \"jarvis estas activo\", \"jarvis me escuchas\", \"jarvis despierta\", \"jarvis activa\", \"jarvis necesito ayuda\", \"[unk]\"]"'
+                  lines[index] = '        private const val GRAMMAR = """["jarvis", "hola jarvis", "oye jarvis", "ey jarvis", "jarvis estas ahi", "jarvis estas despierto", "jarvis estas activo", "jarvis me escuchas", "jarvis despierta", "jarvis activa", "jarvis necesito ayuda", "[unk]"]"""'
                   lines[index] = r'        private const val GRAMMAR = "[\\"jarvis\\", \\"hola jarvis\\", \\"oye jarvis\\", \\"ey jarvis\\", \\"jarvis estas ahi\\", \\"jarvis estas despierto\\", \\"jarvis estas activo\\", \\"jarvis me escuchas\\", \\"jarvis despierta\\", \\"jarvis activa\\", \\"jarvis necesito ayuda\\", \\"[unk]\\"]"'
                   found = True
                   break
