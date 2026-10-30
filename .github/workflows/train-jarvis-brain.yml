@@ -5,7 +5,17 @@ on:
     branches:
       - feat/jarvis-native-brain-and-web-runtime-20261030
     paths:
-      - "brain/**"
+      - "brain/model.py"
+      - "brain/tokenizer.py"
+      - "brain/train.py"
+      - "brain/train_sft.py"
+      - "brain/prepare_corpus.py"
+      - "brain/generate_curriculum.py"
+      - "brain/export_android.py"
+      - "brain/evaluate.py"
+      - "brain/config*.json"
+      - "brain/sft-config.json"
+      - "brain/eval/**"
       - "data/seed/**"
       - ".github/workflows/train-jarvis-brain.yml"
   workflow_dispatch:
