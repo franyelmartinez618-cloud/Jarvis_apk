@@ -542,11 +542,11 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
     }
 
     private suspend fun runNaturalPhoneAction(raw: String): Boolean {
-        val text = strip(raw).lowercase(Locale.ROOT).replace(Regex("[¿?¡!.,;]"), " ").trim()
+        val text = strip(raw).lowercase().replace(Regex("[¿?¡!.,;]"), " ").trim()
         if (text.isBlank()) return false
 
         // Camera and flashlight.
-        if (Regex("\\\\b(abre|abrir|inicia|iniciar|enciende|abreme)\\\\b.*\\\\b(camara|camara del telefono)\\\\b").containsMatchIn(text) ||
+        if (Regex("\\b(abre|abrir|inicia|iniciar|enciende|abreme)\\\\b.*\\\\b(camara|camara del telefono)\\\\b").containsMatchIn(text) ||
             Regex("\\\\b(toma|saca|haz)\\\\s+(una\\\\s+)?foto\\\\b").containsMatchIn(text)) {
             speak(openCameraForModel())
             return true
