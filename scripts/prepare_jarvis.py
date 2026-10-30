@@ -41,7 +41,7 @@ conversation = r'''    /** Una activación abre varios turnos; no exige repetir 
             updateNotification("Configura tu voz en Jarvis antes de usar la escucha personalizada")
             return
         }
-        updateNotification("Verificando la voz del propietario")
+        updateNotification("Reconocimiento local activo")
         delay(200)
         while (running) {
             val heard = listen()
@@ -155,7 +155,7 @@ voice_and_ai = r'''    /** Reconoce las órdenes directamente con Vosk y el mode
                 val buffer = ShortArray(4000)
                 val capturedAudio = ArrayList<Float>(sampleRate * 6)
                 val started = SystemClock.elapsedRealtime()
-                while (SystemClock.elapsedRealtime() - started < 12_000 && running) {
+                while (SystemClock.elapsedRealtime() - started < 8_000 && running) {
                     val count = record.read(buffer, 0, buffer.size)
                     if (count <= 0) { delay(20); continue }
                     for (index in 0 until count) capturedAudio.add(buffer[index] / 32768.0f)
@@ -193,7 +193,7 @@ voice_and_ai = r'''    /** Reconoce las órdenes directamente con Vosk y el mode
         if (now < ownerSessionUntilMs) return true
         val recent = audio.takeLast(16000 * 3).toFloatArray()
         val matched = OwnerVoiceVerifier.matches(this, recent)
-        if (matched) ownerSessionUntilMs = now + 15_000L
+        if (matched) ownerSessionUntilMs = now + 90_000L
         return matched
     }
 
