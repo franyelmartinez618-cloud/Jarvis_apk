@@ -38,6 +38,29 @@ jobs:
           test -f web/app.js
           test -f web/version.json
           echo "Interfaz local comprobada."
+          BUILD_ID="${GITHUB_SHA:0:12}"
+          python3 - "$BUILD_ID" <<'PY'
+          import json, re, sys
+          from pathlib import Path
+          build = sys.argv[1]
+          app = Path("web/app.js")
+          source = app.read_text(encoding="utf-8")
+          source, count = re.subn(r'const BUILD = "[^"]+";', 'const BUILD = "web-' + build + '";', source, count=1)
+          if count != 1:
+              raise SystemExit("No se encontró el identificador de compilación del chat.")
+          app.write_text(source, encoding="utf-8")
+          sw = Path("web/sw.js")
+          source = sw.read_text(encoding="utf-8")
+          source, count = re.subn(r'const CACHE_NAME = "[^"]+";', 'const CACHE_NAME = "jarvis-web-shell-' + build + '";', source, count=1)
+          if count != 1:
+              raise SystemExit("No se encontró el identificador de caché.")
+          sw.write_text(source, encoding="utf-8")
+          Path("web/version.json").write_text(
+              json.dumps({"build": "web-" + build, "notes": "Interfaz y núcleo local actualizados."}, ensure_ascii=False, indent=2) + "\\n",
+              encoding="utf-8",
+          )
+          print("Publicando versión web", build)
+          PY
 
       - name: Subir archivos web
         uses: actions/upload-pages-artifact@v4
