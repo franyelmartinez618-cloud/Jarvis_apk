@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: jarvis-brain-training-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   train:
     name: Entrenamiento experimental desde pesos aleatorios
