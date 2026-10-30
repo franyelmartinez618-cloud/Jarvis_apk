@@ -33,7 +33,8 @@ internal class JarvisNativeBrain(context: Context) {
     fun reply(input: String, history: List<Pair<String, String>>): String {
         val clean = input.trim()
         if (clean.isEmpty()) return "Te escucho. ¿Qué necesitas?"
-        if (neural != null) {
+        val activeNeural = neural
+        if (activeNeural != null) {
             val prompt = buildString {
                 history.takeLast(6).forEach { (role, message) ->
                     append(if (role == "user") "Usuario: " else "JARVIS: ")
@@ -43,7 +44,7 @@ internal class JarvisNativeBrain(context: Context) {
                 append("Usuario: ").append(clean).append('\n')
                 append("JARVIS:")
             }
-            val generated = runCatching { neural.generate(prompt, 180) }.getOrNull()?.trim().orEmpty()
+            val generated = runCatching { activeNeural.generate(prompt, 180) }.getOrNull()?.trim().orEmpty()
             val safe = generated.substringBefore("\nUsuario:").substringBefore("\nJARVIS:").trim()
             if (safe.length >= 2) return safe.take(1600)
         }
