@@ -844,10 +844,16 @@ native_lines = '''        <uses-native-library android:name="libvndksupport.so" 
         <uses-native-library android:name="libOpenCL.so" android:required="false" />
 '''
 if "libOpenCL.so" not in manifest:
-    app_end = '        android:theme="@android:style/Theme.Material.Light.NoActionBar">\\n'
+    app_end = '        android:theme="@android:style/Theme.Material.Light.NoActionBar">'
     if app_end not in manifest:
         raise SystemExit("No se encontró el final de los atributos de application en el manifiesto.")
-    manifest = manifest.replace(app_end, app_end + native_lines, 1)
+    manifest = manifest.replace(app_end, app_end + "\n" + native_lines, 1)
+if "com.android.alarm.permission.SET_ALARM" not in manifest:
+    manifest = manifest.replace(
+        '    <uses-permission android:name="android.permission.RECORD_AUDIO" />',
+        '    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />',
+        1
+    )
 if "android.permission.ACCESS_NETWORK_STATE" not in manifest:
     manifest = manifest.replace(
         '    <uses-permission android:name="android.permission.INTERNET" />',
