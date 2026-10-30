@@ -47,6 +47,7 @@ imports = [
     "import android.provider.AlarmClock",
     "import android.provider.CalendarContract",
     "import android.provider.MediaStore",
+    "import android.provider.ContactsContract",
     "import android.hardware.camera2.CameraCharacteristics",
     "import android.hardware.camera2.CameraManager",
     "import java.net.HttpURLConnection",
@@ -244,6 +245,30 @@ tool_methods = r'''    fun openAppFromModel(name: String): String {
         return "Mensaje preparado. Jarvis mostrará el contacto y el texto y pedirá confirmación hablada antes de abrir WhatsApp."
     }
 
+    fun queueSmsFromModel(contactName: String, message: String): String {
+        if (!has(Manifest.permission.READ_CONTACTS) || !has(Manifest.permission.SEND_SMS)) {
+            return "PERMISO_PENDIENTE: Jarvis necesita Contactos y SMS."
+        }
+        if (contactName.isBlank() || message.isBlank()) return "Falta el contacto o el contenido del SMS."
+        pendingModelAction = PendingModelAction("sms", contactName, message)
+        return "SMS preparado. Antes de enviarlo, Jarvis mostrará el contacto y el texto y pedirá confirmación hablada."
+    }
+
+    fun createContactForModel(name: String, phone: String): String {
+        if (name.isBlank() || phone.isBlank()) return "Falta el nombre o el número del contacto."
+        return try {
+            val intent = Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI)
+                .putExtra(ContactsContract.Intents.Insert.NAME, name)
+                .putExtra(ContactsContract.Intents.Insert.PHONE, phone)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            "Abrí el formulario para guardar el contacto " + name + ". Revisa los datos y pulsa Guardar."
+        } catch (e: Exception) {
+            Log.e(TAG, "No se pudo abrir el editor de contactos", e)
+            "No pude abrir el formulario de contactos."
+        }
+    }
+
     fun readVisibleScreenForModel(): String {
         return JarvisAccessibilityService.readScreen()
             ?: "ACCESIBILIDAD_PENDIENTE: activa Control de pantalla de Jarvis en Ajustes > Accesibilidad."
@@ -322,6 +347,7 @@ tool_methods = r'''    fun openAppFromModel(name: String): String {
         when (pending.kind) {
             "call" -> doCall(pending.target)
             "whatsapp" -> doMessage(Cmd.Message(Via.WHATSAPP, pending.target, pending.body))
+            "sms" -> doMessage(Cmd.Message(Via.SMS, pending.target, pending.body))
         }
     }
 
@@ -715,6 +741,24 @@ class JarvisTools(private val service: JarvisService) : ToolSet {
 ''', encoding="utf-8")
 
 tool_source = tools_path.read_text(encoding="utf-8")
+if "fun requestSmsMessage(" not in tool_source:
+    tool_source = tool_source.replace(
+        '    @Tool(description = "Read text visible on the currently open app screen. Requires Jarvis Screen Control accessibility to be enabled.")',
+        r'''    @Tool(description = "Prepare an SMS. Jarvis reads the contact, shows the exact message, and asks for spoken confirmation before sending.")
+    fun requestSmsMessage(
+        @ToolParam(description = "Contact name or family nickname.") contactName: String,
+        @ToolParam(description = "Exact SMS text to send.") message: String
+    ): String = service.queueSmsFromModel(contactName, message)
+
+    @Tool(description = "Open the Android contact editor with a new person's name and phone number. The user reviews and saves the contact.")
+    fun createContact(
+        @ToolParam(description = "Person's full name.") name: String,
+        @ToolParam(description = "Phone number, preferably with country code.") phone: String
+    ): String = service.createContactForModel(name, phone)
+
+    @Tool(description = "Read text visible on the currently open app screen. Requires Jarvis Screen Control accessibility to be enabled.")''',
+        1
+    )
 if "fun setAlarm(" not in tool_source:
     tool_source = tool_source.replace(
         '    @Tool(description = "Tell the current phone time.")',
