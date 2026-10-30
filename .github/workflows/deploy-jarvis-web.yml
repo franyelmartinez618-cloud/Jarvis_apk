@@ -56,7 +56,7 @@ jobs:
               raise SystemExit("No se encontró el identificador de caché.")
           sw.write_text(source, encoding="utf-8")
           Path("web/version.json").write_text(
-              json.dumps({"build": "web-" + build, "notes": "Interfaz y núcleo local actualizados."}, ensure_ascii=False, indent=2) + "\\n",
+              json.dumps({"build": "web-" + build, "notes": "Interfaz y núcleo local actualizados."}, ensure_ascii=False, indent=2) + "\n",
               encoding="utf-8",
           )
           print("Publicando versión web", build)
