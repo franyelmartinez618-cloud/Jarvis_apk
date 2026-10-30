@@ -46,6 +46,7 @@ imports = [
     "import android.os.StatFs",
     "import java.net.HttpURLConnection",
     "import java.net.URL",
+    "import java.net.URL",
     "import java.security.MessageDigest",
     "import com.google.ai.edge.litertlm.*",
     "import kotlinx.coroutines.flow.collect",
@@ -484,9 +485,8 @@ respond = r'''    private suspend fun respondNaturally(input: String) {
         try {
             brainMutex.withLock {
                 withContext(Dispatchers.IO) {
-                    conversation.sendMessageAsync(input).collect { message ->
-                        val piece = message.text
-                        if (!piece.isNullOrBlank()) output.append(piece)
+                    conversation.sendMessageAsync(input).collect { piece ->
+                        output.append(piece.toString())
                     }
                 }
             }
