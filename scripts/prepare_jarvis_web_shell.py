@@ -22,23 +22,12 @@ tree = ET.parse(manifest_path)
 manifest = tree.getroot()
 
 # This build is text-first. No microphone permission or voice-triggered services are registered.
-remove_permissions = {
-    "android.permission.RECORD_AUDIO",
-    "android.permission.FOREGROUND_SERVICE",
-    "android.permission.FOREGROUND_SERVICE_MICROPHONE",
-    "android.permission.REQUEST_INSTALL_PACKAGES",
-    "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
-    "android.permission.RECEIVE_BOOT_COMPLETED",
-    "android.permission.READ_CONTACTS",
-    "android.permission.READ_PHONE_STATE",
-    "android.permission.CALL_PHONE",
-    "android.permission.SEND_SMS",
-    "android.permission.POST_NOTIFICATIONS",
-    "android.permission.SYSTEM_ALERT_WINDOW",
-}
+# Remove every unneeded runtime permission. Internet is used only for web UI delivery.
 for child in list(manifest):
-    if child.tag == "uses-permission" and child.get(ANDROID + "name") in remove_permissions:
-        manifest.remove(child)
+    if child.tag in ("uses-permission", "uses-permission-sdk-23"):
+        permission = child.get(ANDROID + "name", "")
+        if permission != "android.permission.INTERNET":
+            manifest.remove(child)
     if child.tag == "uses-feature" and child.get(ANDROID + "name") == "android.hardware.microphone":
         manifest.remove(child)
 
@@ -46,44 +35,50 @@ application = manifest.find("application")
 if application is None:
     raise SystemExit("AndroidManifest.xml no contiene application")
 
-# The text-first app has no microphone, boot receiver or background speech service.
-# Keep only the explicitly enabled accessibility service among the old service declarations.
+# Keep only the launcher and opt-in screen accessibility. No microphone service,
+# boot receiver, call/SMS permission or voice enrollment activity remains registered.
 for child in list(application):
     name = child.get(ANDROID + "name", "")
     if child.tag == "service" and "JarvisAccessibilityService" not in name:
         application.remove(child)
-    elif child.tag == "receiver":
+    elif child.tag in ("receiver", "activity-alias"):
         application.remove(child)
-    elif child.tag == "activity" and "VoiceSetupActivity" in name:
+    elif child.tag == "activity" and "MainActivity" not in name:
         application.remove(child)
-
-# Ensure network access for the hosted web shell. It is not an AI endpoint.
-if not any(
-    child.tag == "uses-permission" and child.get(ANDROID + "name") == "android.permission.INTERNET"
-    for child in list(manifest)
-):
-    manifest.insert(0, ET.Element("uses-permission", {ANDROID + "name": "android.permission.INTERNET"}))
-
-# Keep the optional accessibility service available for explicit user actions only.
-has_accessibility = any(
-    child.tag == "service" and "JarvisAccessibilityService" in child.get(ANDROID + "name", "")
-    for child in list(application)
-)
-if not has_accessibility:
-    service = ET.SubElement(application, "service", {
-        ANDROID + "name": ".JarvisAccessibilityService",
-        ANDROID + "label": "Control de pantalla de Jarvis",
-        ANDROID + "permission": "android.permission.BIND_ACCESSIBILITY_SERVICE",
-        ANDROID + "exported": "true",
-    })
-    intent_filter = ET.SubElement(service, "intent-filter")
-    ET.SubElement(intent_filter, "action", {ANDROID + "name": "android.accessibilityservice.AccessibilityService"})
-    ET.SubElement(service, "meta-data", {
-        ANDROID + "name": "android.accessibilityservice",
-        ANDROID + "resource": "@xml/jarvis_accessibility_service",
-    })
 
 tree.write(manifest_path, encoding="utf-8", xml_declaration=True)
+
+# Remove legacy voice code and native speech engines from the generated APK.
+java_root = root / "app/src/main/java/com/jarvis/personal"
+if java_root.exists():
+    keep = {"MainActivity.kt", "JarvisAccessibilityService.kt"}
+    for path in java_root.glob("*.kt"):
+        if path.name not in keep:
+            path.unlink()
+sherpa_root = root / "app/src/main/java/com/k2fsa"
+if sherpa_root.exists():
+    shutil.rmtree(sherpa_root)
+gradle_candidates = [root / "app/build.gradle.kts", root / "app/build.gradle"]
+gradle_path = next((path for path in gradle_candidates if path.exists()), None)
+if gradle_path:
+    gradle_text = gradle_path.read_text(encoding="utf-8")
+    gradle_text = __import__("re").sub(
+        r'(?m)^\\s*implementation\\(["\\']com\\.alphacephei:vosk-android:[^"\\']+["\\']\\)\\s*\\n',
+        "",
+        gradle_text,
+    )
+    gradle_path.write_text(gradle_text, encoding="utf-8")
+asset_root = root / "app/src/main/assets"
+if asset_root.exists():
+    for path in asset_root.iterdir():
+        if path.name != "jarvis":
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+jni_root = root / "app/src/main/jniLibs"
+if jni_root.exists():
+    shutil.rmtree(jni_root)
 
 main_activity = r'''package com.jarvis.personal
 
