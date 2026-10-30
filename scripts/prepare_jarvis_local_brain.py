@@ -1043,6 +1043,20 @@ if old_filter in contacts:
 else:
     raise SystemExit("No se encontró el filtro base de contactos.")
 contacts_path.write_text(contacts, encoding="utf-8")
+# Expand the voice command grammar to natural, colloquial Spanish.
+parser_path = root / "app/src/main/java/com/jarvis/personal/Parser.kt"
+parser_lines = parser_path.read_text(encoding="utf-8").splitlines()
+for index, line in enumerate(parser_lines):
+    if "private val MSG_VERB =" in line:
+        parser_lines[index] = r'    private val MSG_VERB = Regex("^${P}(?:manda|mandale|envia|enviale|escribe|escribile|escribi|dile|decile|avisa|avisale|informale|cuentale|comunicale)\\b")'
+    elif "private val CALL =" in line:
+        parser_lines[index] = r'    private val CALL = Regex("^${P}(?:llama|llamame|llamar|llamale|marca|marcar|telefonea|comunicame con|comunicate con|contacta|contactame con|llama por telefono)\\s+(?:a la\\s+|a\\s+|al\\s+)?(.+)$")'
+    elif "private val OPEN =" in line:
+        parser_lines[index] = r'    private val OPEN = Regex("^${P}(?:abre|abrime|abri|abrir|inicia|iniciame|ejecuta|ejecutar|lanza|arranca|pon en marcha)\\s+(?:la\\s+|el\\s+)?(?:app\\s+|aplicacion\\s+|juego\\s+)?(?:de\\s+)?(.+)$")'
+parser_text = "\\n".join(parser_lines) + "\\n"
+if "comunicate con" not in parser_text or "informale" not in parser_text:
+    raise SystemExit("No se pudo ampliar el analizador de órdenes conversacionales.")
+parser_path.write_text(parser_text, encoding="utf-8")
 
 # Android permissions: regular runtime permissions are requested after each app upgrade if they are missing;
 # special grants must be switched on by the user in Android Settings.
