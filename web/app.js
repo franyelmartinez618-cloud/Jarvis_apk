@@ -220,7 +220,15 @@
     const openMatch = raw.match(/^(?:abre|abrir|inicia|lanza)\s+(?:la\s+)?(?:aplicacion\s+)?(?:app\s+)?(.+)$/i);
     if (openMatch) return native("open_app", openMatch[1].trim());
     if (/\b(lee la pantalla|que dice la pantalla|lee lo que aparece|que hay en pantalla)\b/.test(q)) return native("read_screen");
-    if (/^(?:toca|pulsa|presiona|selecciona)\s+(.+)$/i.test(raw)) return native("click_text", raw.replace(/^(?:toca|pulsa|presiona|selecciona)\s+/i, "").trim());
+    const clickMatch = raw.match(/^(?:toca|pulsa|presiona|selecciona)\s+(.+)$/i);
+    if (clickMatch) {
+      const target = clickMatch[1].trim();
+      const risky = /\b(enviar|send|publicar|postear|pagar|pago|comprar|eliminar|borrar|delete|transferir)\b/i.test(target);
+      if (risky && !window.confirm("Esta acción puede enviar, publicar, pagar o borrar información. ¿Confirmas que quieres pulsar «" + target + "»?")) {
+        return "Acción cancelada. No pulsé ningún control.";
+      }
+      return native("click_text", target);
+    }
     if (/^(?:escribe|teclea|introduce|ingresa)\s+(.+)$/i.test(raw)) return native("type_text", raw.replace(/^(?:escribe|teclea|introduce|ingresa)\s+/i, "").trim());
     if (/^(?:vuelve atras|atras|retrocede|regresa)$/.test(q)) return native("back");
     if (/^(?:ir al inicio|pantalla principal|vuelve al inicio)$/.test(q)) return native("home");
