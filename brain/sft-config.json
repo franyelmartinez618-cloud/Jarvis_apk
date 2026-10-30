@@ -1,0 +1,11 @@
+{
+  "steps": 1500,
+  "batch_size": 8,
+  "gradient_accumulation": 2,
+  "warmup_steps": 100,
+  "learning_rate": 0.00005,
+  "min_learning_rate": 0.000005,
+  "weight_decay": 0.01,
+  "log_every": 100,
+  "seed": 20261030
+}
