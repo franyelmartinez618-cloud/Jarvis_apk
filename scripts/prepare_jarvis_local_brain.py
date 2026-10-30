@@ -51,7 +51,6 @@ imports = [
     "import android.hardware.camera2.CameraManager",
     "import java.net.HttpURLConnection",
     "import java.net.URL",
-    "import java.net.URL",
     "import java.security.MessageDigest",
     "import com.google.ai.edge.litertlm.*",
     "import kotlinx.coroutines.flow.collect",
@@ -59,7 +58,7 @@ imports = [
     "import kotlinx.coroutines.sync.withLock",
 ]
 for line in imports:
-    if line not in service:
+    if line + "\n" not in service:
         service = service.replace(package_line, package_line + line + "\n", 1)
 
 service = service.replace(
