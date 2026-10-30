@@ -250,6 +250,8 @@ voice_and_ai = r'''    /** Reconoce las órdenes directamente con Vosk y el mode
     private fun localReply(text: String): String {
         return when {
             text.isBlank() -> "Te escucho. Dime qué necesitas."
+            Regex("\\b(jarvis estas ahi|estas ahi|jarvis estas despierto|estas despierto|jarvis estas activo|estas activo|jarvis me escuchas|me escuchas)\\b").containsMatchIn(text) ->
+                "Sí, señor. Estoy aquí, activo y escuchándote. ¿Qué necesitas?"
             Regex("\\b(hola|buenas|buenos dias|buenas tardes|buenas noches)\\b").containsMatchIn(text) ->
                 "Hola. Soy Jarvis. Estoy trabajando localmente en este teléfono. ¿Qué hacemos?"
             Regex("\\b(como estas|que tal estas|estas bien)\\b").containsMatchIn(text) ->
@@ -258,8 +260,8 @@ voice_and_ai = r'''    /** Reconoce las órdenes directamente con Vosk y el mode
                 "Soy Jarvis, tu asistente local. No envío tu conversación a una IA remota. Ejecuto las habilidades instaladas en esta aplicación."
             Regex("\\b(ayuda|que puedes hacer|que sabes hacer|comandos)\\b").containsMatchIn(text) ->
                 "Puedo abrir aplicaciones, decir la hora y la fecha, buscar contactos, preparar mensajes y llamadas con confirmación, y controlar elementos visibles si activas Accesibilidad."
-            Regex("\\b(estas escuchando|jarvis estas activo|estas activo)\\b").containsMatchIn(text) ->
-                "Sí. Estoy activo en este dispositivo."
+            Regex("\\b(estas escuchando|estas activo|jarvis estas activo)\\b").containsMatchIn(text) ->
+                "Sí, señor. Estoy activo y listo para ayudarte."
             Regex("\\b(privacidad|internet|conectado a una ia|ia remota|gemini|qwen)\\b").containsMatchIn(text) ->
                 "No uso Gemini ni otro servicio de inteligencia artificial remoto. La voz se reconoce localmente; las actualizaciones de la aplicación solo consultan GitHub."
             Regex("\\b(gracias|muchas gracias)\\b").containsMatchIn(text) ->
