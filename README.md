@@ -56,3 +56,6 @@ Se completó un experimento desde pesos aleatorios: 2.500 pasos sobre 48 ejemplo
 - El entrenamiento de prueba del corpus semilla se ejecuta automáticamente en Actions. Su checkpoint no se integra en la APK sin evaluación cualitativa satisfactoria.
 
 Consulta [brain/README.md](brain/README.md) y [data/raw/README.md](data/raw/README.md) para los requisitos y el procedimiento.
+
+
+La iteración de entrenamiento ahora añade 3.000 ejercicios matemáticos reproducibles, ajuste supervisado de instrucciones (SFT) y evaluación con preguntas no vistas. El perfil de 12 capas/512 dimensiones es un paso intermedio de unos 38,4 M parámetros, no un cerebro general. La escala de 1–2 mil millones de parámetros requeriría pesos de varios GB, decenas de miles de millones de tokens, GPU(s) con mucha VRAM y un runtime móvil cuantizado; los requisitos están en [brain/SCALE_TARGET.md](brain/SCALE_TARGET.md).
