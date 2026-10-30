@@ -1,0 +1,12 @@
+{"question":"Explica la diferencia entre rapidez y velocidad.","must_include":["dirección","vector","escalar"]}
+{"question":"¿Cómo investigarías un cierre inesperado de una aplicación Android?","must_include":["reproducir","registro","error","traza"]}
+{"question":"Describe una forma segura de preparar un mensaje de WhatsApp.","must_include":["destinatario","confirmar","resultado"]}
+{"question":"¿Qué haces si un documento solo permite uso no comercial?","must_include":["comercial","permiso","excluir"]}
+{"question":"¿Qué es la recursión y qué evita que sea infinita?","must_include":["caso base","función","termina"]}
+{"question":"¿Por qué una pérdida baja no demuestra que un asistente sea bueno?","must_include":["validación","ejemplos","generalizar"]}
+{"question":"¿Cómo respondes cuando no tienes evidencia suficiente?","must_include":["incertidumbre","fuente","verificar"]}
+{"question":"Diseña un límite de peticiones para proteger una API.","must_include":["token","cuota","límite","tasa"]}
+{"question":"¿Qué garantiza una transacción de base de datos?","must_include":["atomicidad","consistencia","aislamiento","durabilidad"]}
+{"question":"¿Qué factores influyen en la autonomía de una batería?","must_include":["capacidad","consumo","temperatura"]}
+{"question":"¿Qué determina la forma de una órbita?","must_include":["gravedad","velocidad","energía"]}
+{"question":"¿Cómo detectas un razonamiento con falso dilema?","must_include":["opciones","alternativas","únicamente"]}

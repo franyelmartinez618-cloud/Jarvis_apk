@@ -65,9 +65,9 @@ jobs:
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_updates.py" "$PROJECT"
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_voice_unlock.py" "$PROJECT"
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_local_brain.py" "$PROJECT"
+          python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_native_brain.py" "$PROJECT"
           MANIFEST="$PROJECT/app/src/main/AndroidManifest.xml"
           SERVICE="$PROJECT/app/src/main/java/com/jarvis/personal/JarvisService.kt"
-          TOOLS="$PROJECT/app/src/main/java/com/jarvis/personal/JarvisTools.kt"
           PARSER="$PROJECT/app/src/main/java/com/jarvis/personal/Parser.kt"
           grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST"
           grep -q 'android.permission.CAMERA' "$MANIFEST"
@@ -77,14 +77,18 @@ jobs:
           grep -q 'Recognizer' "$SERVICE"
           grep -q 'speak(' "$SERVICE"
           grep -q 'initializeLocalBrain' "$SERVICE"
-          grep -q 'sendMessageAsync' "$SERVICE"
+          grep -q 'JarvisNativeBrain' "$SERVICE"
           grep -q 'runNaturalPhoneAction' "$SERVICE"
           grep -q 'queueSmsFromModel' "$SERVICE"
           grep -q 'setAlarmForModel' "$SERVICE"
           grep -q 'setScreenBrightnessForModel' "$SERVICE"
-          grep -q 'requestWhatsAppMessage' "$TOOLS"
-          grep -q 'requestSmsMessage' "$TOOLS"
+          grep -q 'queueWhatsAppFromModel' "$SERVICE"
+          grep -q 'queueSmsFromModel' "$SERVICE"
           grep -q 'informale' "$PARSER"
+          if grep -R -n -i -E 'qwen|litertlm|sendMessageAsync|EngineConfig' "$PROJECT/app/src/main/java"; then
+            echo "ERROR: a third-party conversational model/runtime remains in the APK sources."
+            exit 1
+          fi
           if grep -R -n -E 'OwnerVoiceVerifier|VoiceSetupActivity|verifiedVoice' "$PROJECT/app/src/main/java"; then
             echo "ERROR: speaker biometrics remain in the generated Android sources."
             exit 1
@@ -92,7 +96,7 @@ jobs:
           grep -q 'text.contains("jarvis")' "$PROJECT/app/src/main/java/com/jarvis/personal/WakeWordListener.kt"
           echo "JARVIS_PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
-      - name: Descargar modelo de español para activación offline
+      - name: Instalar reconocimiento de voz offline (solo transcripción)
         shell: bash
         run: |
           set -euo pipefail
@@ -159,6 +163,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
-          path: output/app-debug.apk
+          path: |
+            output/app-debug.apk
+            output/jarvis.apk
           if-no-files-found: error
           retention-days: 7

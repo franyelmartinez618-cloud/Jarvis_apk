@@ -1,0 +1,14 @@
+(() => {
+"use strict";
+const BUILD="web-20261030-initial", $=id=>document.getElementById(id), messages=$("messages"), prompt=$("prompt"), form=$("composer");
+const native=window.JarvisNative||window.JARVIS_NATIVE||null;
+$("status").textContent=native?"ANDROID CONNECTED":"WEB INTERFACE";
+const add=(who,text)=>{const a=document.createElement("article");a.className="message "+who;const b=document.createElement("b");b.textContent=who==="user"?"YOU":"J.A.R.V.I.S.";const p=document.createElement("p");p.textContent=text;a.append(b,p);messages.append(a);messages.scrollTop=messages.scrollHeight;};
+const speak=text=>{if(!("speechSynthesis"in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-GB";u.rate=.88;u.pitch=.88;const vs=speechSynthesis.getVoices().filter(v=>/^en-GB/i.test(v.lang));const names=["Daniel","Arthur","George","Oliver","Ryan"];u.voice=vs.find(v=>names.some(n=>v.name.toLowerCase().includes(n.toLowerCase())))||vs.find(v=>/male|man|daniel|arthur|george/i.test(v.name))||vs[0]||null;speechSynthesis.speak(u);};
+const send=async value=>{const text=value.trim();if(!text)return;add("user",text);prompt.value="";if(native&&typeof native.sendMessage==="function"){try{const result=await native.sendMessage(text);if(typeof result==="string"&&result){add("jarvis",result);speak(result);}return;}catch(_){add("jarvis","No pude comunicarme con el motor local de Android.");return;}}add("jarvis","La interfaz web está activa, pero todavía no está conectada al cerebro propio de JARVIS. No voy a fingir que he procesado tu petición. Cuando el motor local esté integrado, esta conversación se ejecutará sin enviar tus mensajes a servicios de IA externos.");};
+form.addEventListener("submit",e=>{e.preventDefault();send(prompt.value);});
+$("mic").addEventListener("click",()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){$("note").textContent="Este navegador no ofrece reconocimiento de voz. Puedes escribir o usar el micrófono nativo de Android.";return;}const r=new R();r.lang="es-CO";r.interimResults=false;r.maxAlternatives=1;$("mic").classList.add("active");r.onresult=e=>send(e.results[0][0].transcript);r.onerror=()=>$("note").textContent="No pude acceder al reconocimiento. Revisa el permiso del micrófono." ;r.onend=()=>$("mic").classList.remove("active");try{r.start();}catch(_){$("mic").classList.remove("active");}});
+const tick=()=>$("clock").textContent=new Intl.DateTimeFormat("es-CO",{hour:"2-digit",minute:"2-digit"}).format(new Date());tick();setInterval(tick,15000);
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(()=>{});
+window.JARVIS_WEB_BUILD=BUILD;
+})();

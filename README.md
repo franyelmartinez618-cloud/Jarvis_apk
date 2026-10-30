@@ -1,60 +1,61 @@
-# JARVIS — asistente de voz local para Android
+# J.A.R.V.I.S. — asistente personal para Android
 
-Jarvis es una aplicación Android de interacción por voz. Se abre, se inicia el servicio y se habla con él; no es un chat de texto. El proyecto conserva el paquete Android, la identidad de firma estable y la posibilidad de actualizar la instalación existente.
+Proyecto Android existente. Se conserva el paquete de la aplicación, el flujo de firma y la ruta de actualización.
 
-## Arquitectura de voz y cerebro local
+## Trabajo de sustitución del cerebro
 
-- **Voz de entrada (ASR):** Vosk con el modelo pequeño de español incluido en la APK. Convierte el habla a texto dentro del teléfono.
-- **Cerebro conversacional:** Qwen3-1.7B en formato LiteRT-LM, ejecutado en el dispositivo. Sustituye las respuestas fijas como motor de conversación.
-- **Voz de salida (TTS):** TextToSpeech de Android. La voz disponible depende del motor e idioma instalados en el teléfono.
-- **Acciones:** herramientas Kotlin que invocan APIs de Android, un analizador local de órdenes frecuentes y el servicio opcional de Accesibilidad.
+La versión estable que estaba publicada desde `main` (v112) todavía fue construida con el motor anterior. Esta rama de trabajo elimina de la APK el motor conversacional de terceros y conecta un runtime Android propio, escrito en Kotlin, que carga exclusivamente checkpoints creados por el entrenamiento de este repositorio.
 
-El archivo del cerebro local pesa aproximadamente **932 MiB (977 MB)**. No se mete dentro de la APK para que las actualizaciones de la aplicación no tengan que volver a descargarlo. La primera vez que se inicia una instalación que no tiene el modelo, Jarvis pide permiso para descargarlo; se necesita conexión a internet y al menos 1.2 GB libres. Se guarda en el almacenamiento privado de la aplicación, se comprueba con SHA-256 y después el texto de la conversación se procesa localmente, sin enviarlo a Gemini, ChatGPT ni a una API conversacional remota. La descarga inicial sí usa internet.
+- `brain/model.py`: Transformer causal propio, con pesos inicializados aleatoriamente.
+- `brain/tokenizer.py`: tokenizador propio byte-level UTF-8.
+- `brain/train.py`: entrenamiento next-token desde cero.
+- `brain/export_android.py`: exportación de pesos al formato binario versionado `JARVIS01`.
+- `brain/android/JarvisNativeBrain.kt`: inferencia Kotlin propia, sin LiteRT ni SDK de modelos externos.
+- `data/seed/jarvis_core.jsonl`: 48 ejemplos originales sobre identidad, funciones Android, permisos y reglas de seguridad del proyecto.
 
-El modelo está publicado con licencia Apache 2.0 por LiteRT Community. Es un modelo abierto preentrenado, no un modelo privado entrenado desde cero para Jarvis. **No es AGI ni tiene capacidades literalmente ilimitadas.** Su calidad, rapidez y memoria disponible dependen del teléfono; aún hay que probarlo en cada dispositivo objetivo.
+El reconocedor Vosk se mantiene únicamente como componente separado de transcripción de voz a texto; no genera respuestas ni decide acciones. El razonamiento conversacional no depende de él.
 
-## Acciones de Android conectadas
+## Estado real del cerebro
 
-El puente de herramientas y el analizador directo cubren estas acciones:
+El runtime propio y el pipeline de entrenamiento/exportación están creados. **Todavía no existe un checkpoint neuronal entrenado**. Sin checkpoint, Android utiliza el índice local de conocimiento del proyecto y el enrutador de órdenes del teléfono; no presenta la red aleatoria como si supiera conversar. Los 48 ejemplos semilla sirven para enseñar identidad y capacidades, pero no constituyen conocimiento general.
 
-- Abrir aplicaciones instaladas por nombre, con tolerancia a errores pequeños de pronunciación o transcripción; consultar la lista de aplicaciones visibles para el lanzador.
-- Buscar contactos, incluidos algunos apodos familiares habituales; preparar llamadas y mensajes por WhatsApp o SMS.
-- Leer el texto de la pantalla, desplazarse, escribir en un campo enfocado y pulsar controles visibles mediante Accesibilidad.
-- Abrir una búsqueda web o una búsqueda de un lugar en mapas.
-- Abrir la cámara, controlar la linterna, cambiar el volumen multimedia y ajustar el brillo si Android concede el acceso correspondiente.
-- Preparar una alarma o un temporizador en la aplicación de reloj; abrir el editor de calendario con un evento.
+Para el primer entrenamiento:
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r brain/requirements.txt
+python brain/prepare_corpus.py --input data/seed --output data/processed/corpus.txt
+python brain/train.py --config brain/config.json --data data/processed/corpus.txt --out checkpoints/jarvis.pt
+python brain/export_android.py --checkpoint checkpoints/jarvis.pt --output brain/artifacts/jarvis-brain.bin
+```
 
-Llamadas, SMS, mensajes y acciones sensibles de pantalla requieren confirmación hablada antes de continuar. WhatsApp abre el mensaje preparado y la persona debe tocar «Enviar». El calendario y el reloj muestran sus pantallas nativas para que se revise y guarde o inicie la acción.
+Después de revisar métricas y respuestas, el archivo `brain/artifacts/jarvis-brain.bin` se incluye en la siguiente compilación Android. Para conocimiento amplio se deben añadir fuentes legales, multilingües y multidominio, registrar su procedencia y ampliar la evaluación.
 
-El analizador directo ejecuta órdenes comunes sin depender de que el modelo genere una llamada a herramienta. Las peticiones que no coinciden con una acción instalada pasan al modelo conversacional; este puede ayudar a entender la intención y utilizar las herramientas registradas cuando el formato del modelo lo permita. No se afirma que cualquier petición arbitraria pueda ser ejecutada.
+## Android y permisos
 
-## Permisos y límites de Android
+Las acciones del teléfono siguen separadas del texto generado. Android determina qué permisos están concedidos. Llamadas y mensajes requieren permisos y confirmación; Accesibilidad, mostrar sobre otras aplicaciones y modificar ajustes necesitan activación en Ajustes del sistema. No se afirma que JARVIS pueda concederse esos permisos a sí mismo.
 
-Al iniciar y después de actualizar, Jarvis revisa los permisos normales que falten y puede solicitarlos individualmente: micrófono, cámara para la linterna, contactos, llamadas, SMS y notificaciones. Solo se piden los permisos relacionados con funciones implementadas.
+## Voz e interfaz
 
-Android no permite que una aplicación se conceda a sí misma permisos especiales. La persona debe activar manualmente desde Ajustes los accesos que quiera usar, por ejemplo:
+La voz objetivo es masculina británica, calmada y grave (en-GB), si el sintetizador instalado ofrece una voz adecuada. Voz a texto, razonamiento neuronal y texto a voz son componentes separados. La PWA de `web/` es una interfaz adicional; falta integrar su WebView nativo para actualizarla sin reinstalar la APK.
 
-- **Accesibilidad:** leer pantallas, pulsar controles y escribir en otras aplicaciones.
-- **Mostrar sobre otras aplicaciones:** puede ayudar con algunas aperturas y superposiciones.
-- **Modificar ajustes del sistema:** necesario para controlar el brillo.
-- **Exención de ahorro de batería:** ayuda a reducir la suspensión del servicio, especialmente en algunas capas de Android.
+No se declara AGI, conocimiento ilimitado ni control total del dispositivo. La publicación de esta rama y su APK firmada requieren que la compilación Android pase y que se publique desde `main` usando la firma estable.
 
-El sistema operativo y cada aplicación conservan el control de sus pantallas, datos y acciones protegidas. Android puede impedir que un servicio en segundo plano abra directamente otra aplicación; cuando eso ocurra, Jarvis puede dejar una notificación para que la persona toque y continúe. Algunas funciones solo abren Ajustes o una pantalla nativa, no cambian silenciosamente una configuración protegida. Wi-Fi y Bluetooth, por ejemplo, pueden requerir que la persona termine el cambio en Ajustes.
 
-La escucha empieza después de abrir la aplicación, conceder el micrófono y pulsar «Iniciar Jarvis». Android y el fabricante pueden suspender servicios en segundo plano; no se promete escucha permanente en todos los teléfonos.
+## Primer entrenamiento propio (2026-10-30)
+Se completó un experimento desde pesos aleatorios: 2.500 pasos sobre 48 ejemplos originales, pérdida de validación 1.7612 y exportación `JARVIS01` correcta. La prueba cualitativa produjo respuestas incoherentes, por lo que ese checkpoint NO se incluye en la APK. El detalle y las decisiones están en [brain/EXPERIMENT_2026-10-30.md](brain/EXPERIMENT_2026-10-30.md). La APK de la rama usa el runtime propio y el índice semilla, sin modelo conversacional externo.
 
-## Reconocimiento del habla frente a biometría
 
-Jarvis sigue necesitando reconocimiento del habla para entender las palabras pronunciadas. Eso es ASR y se ejecuta localmente. Se eliminó la identificación biométrica del hablante: no se compara la voz con una huella ni se exige grabar muestras para inscribirse.
 
-## Privacidad y almacenamiento
+## Escalado del cerebro propio (30-10-2026)
+- Se amplió el corpus original con 69 ejemplos curriculares adicionales de ciencia, matemáticas, informática, seguridad y planificación.
+- El entrenamiento ahora separa documentos completos para validación, aprende tokens BOS/EOS, acumula gradientes, usa calentamiento y decaimiento coseno, registra perplejidad y guarda checkpoints reanudables.
+- Se añadieron perfiles de investigación móvil (6 capas/256) y grande (12 capas/512/contexto 1024), además de un workflow GPU específico.
+- El perfil grande requiere al menos 1,1 GB de corpus autorizado y un runner Linux con GPU NVIDIA. Los runners CPU de GitHub no pueden entrenarlo a escala grande.
+- Los archivos externos requieren registro individual de licencia, autorización de entrenamiento y uso comercial. No se incorporan fuentes NC o SA automáticamente.
+- El entrenamiento de prueba del corpus semilla se ejecuta automáticamente en Actions. Su checkpoint no se integra en la APK sin evaluación cualitativa satisfactoria.
 
-- El ASR y el cerebro conversacional trabajan localmente después de instalar y descargar el modelo.
-- Las conversaciones no se envían a una API de IA remota.
-- No se guardan muestras biométricas de voz.
-- La descarga inicial del modelo y las búsquedas externas solicitadas sí usan internet.
-- La Accesibilidad permite acceder al contenido visible de otras aplicaciones; solo debe activarse si la persona desea esas funciones.
+Consulta [brain/README.md](brain/README.md) y [data/raw/README.md](data/raw/README.md) para los requisitos y el procedimiento.
 
-## Compilación y actualizaciones
 
-GitHub Actions extrae el proyecto Android base, descarga el modelo de ASR español, aplica los generadores de código y compila APK de depuración y de lanzamiento firmada. La firma estable permite actualizar la aplicación existente sin desinstalarla. Los cambios del motor, permisos o capacidades Android requieren una nueva APK.
+La iteración de entrenamiento ahora añade 3.000 ejercicios matemáticos reproducibles, ajuste supervisado de instrucciones (SFT) y evaluación con preguntas no vistas. El perfil de 12 capas/512 dimensiones es un paso intermedio de unos 38,4 M parámetros, no un cerebro general. La escala de 1–2 mil millones de parámetros requeriría pesos de varios GB, decenas de miles de millones de tokens, GPU(s) con mucha VRAM y un runtime móvil cuantizado; los requisitos están en [brain/SCALE_TARGET.md](brain/SCALE_TARGET.md).

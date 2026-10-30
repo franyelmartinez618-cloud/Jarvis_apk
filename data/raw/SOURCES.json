@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "policy": "Only list files whose owners explicitly permit machine-learning training and commercial use. One entry per exact file path relative to this folder.",
+  "sources": []
+}

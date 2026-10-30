@@ -1,0 +1,79 @@
+name: Entrenamiento grande de JARVIS en GPU propia
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  train:
+    name: Transformer 12 capas / 512 dimensiones
+    # Requiere un runner GPU Linux propio conectado a este repositorio.
+    runs-on: [self-hosted, linux, x64, gpu]
+    timeout-minutes: 1440
+    steps:
+      - name: Descargar el proyecto
+        uses: actions/checkout@v4
+
+      - name: Verificar GPU y entorno
+        run: |
+          nvidia-smi
+          python - <<'PY'
+          import torch
+          assert torch.cuda.is_available(), "Este runner no expone una GPU CUDA."
+          print("GPU:", torch.cuda.get_device_name(0))
+          print("VRAM:", round(torch.cuda.get_device_properties(0).total_memory / 1024**3, 1), "GiB")
+          PY
+
+      - name: Instalar dependencias de entrenamiento
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r brain/requirements.txt
+
+      - name: Generar ejercicios originales de razonamiento
+        run: python brain/generate_curriculum.py --output data/seed/zz_generated_curriculum.jsonl --count 3000
+
+      - name: Construir y auditar corpus
+        run: |
+          test -d data/raw
+          python brain/prepare_corpus.py --input data/raw --output data/processed/corpus.txt
+          python - <<'PY'
+          from pathlib import Path
+          size = Path("data/processed/corpus.txt").stat().st_size
+          print(f"Corpus: {size:,} bytes")
+          assert size >= 1_100_000_000, "El corpus no alcanza el mínimo para el perfil grande."
+          PY
+
+      - name: Entrenar o reanudar JARVIS desde pesos aleatorios
+        run: |
+          python brain/train.py --config brain/config-large.json --data data/processed/corpus.txt --out checkpoints/jarvis-large.pt
+
+      - name: Ajustar instrucciones de JARVIS sobre el checkpoint grande
+        run: |
+          python brain/train_sft.py --checkpoint checkpoints/jarvis-large.pt --data data/seed --config brain/sft-config.json --out checkpoints/jarvis-large-sft.pt
+
+      - name: Evaluar el checkpoint grande
+        run: |
+          python brain/evaluate.py --checkpoint checkpoints/jarvis-large-sft.pt --questions brain/eval/questions.jsonl --output reports/jarvis-large-quality.json --max-tokens 128
+
+      - name: Exportar formato nativo Android
+        run: |
+          python brain/export_android.py --checkpoint checkpoints/jarvis-large-sft.pt --output brain/artifacts/jarvis-brain-large.bin
+          python -m json.tool brain/artifacts/jarvis-brain-large.json
+
+      - name: Publicar checkpoint para evaluación
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-large-gpu-training
+          path: |
+            checkpoints/jarvis-large.pt
+            checkpoints/jarvis-large-last.pt
+            checkpoints/jarvis-large-sft.pt
+            checkpoints/jarvis-large-sft-last.pt
+            checkpoints/jarvis-large.metrics.jsonl
+            reports/jarvis-large-quality.json
+            brain/artifacts/jarvis-brain-large.bin
+            brain/artifacts/jarvis-brain-large.json
+          if-no-files-found: error
+          retention-days: 30

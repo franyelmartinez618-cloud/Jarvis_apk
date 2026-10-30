@@ -1,0 +1,10 @@
+# Generated JARVIS training data and local training artifacts
+data/seed/zz_generated_curriculum.jsonl
+data/processed/
+checkpoints/
+reports/
+brain/artifacts/
+
+# Downloaded OASST1 files (fetched and filtered only inside the training workflow)
+data/raw/oasst_es_human.jsonl
+data/raw/OASST-LICENSE
