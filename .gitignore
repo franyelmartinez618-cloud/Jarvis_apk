@@ -1,0 +1,6 @@
+# Generated JARVIS training data and local training artifacts
+data/seed/zz_generated_curriculum.jsonl
+data/processed/
+checkpoints/
+reports/
+brain/artifacts/
