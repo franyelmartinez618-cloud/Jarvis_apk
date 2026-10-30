@@ -172,7 +172,7 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this)
             .setTitle("JARVIS · CHAT PRIVADO")
             .setMessage(
-                "Esta versión ya no utiliza micrófono ni reconocimiento de voz. Puedes conversar escribiendo; el núcleo local funciona sin enviar mensajes a una IA externa.\\n\\n" +
+                "Esta versión ya no utiliza micrófono ni reconocimiento de voz. Puedes conversar escribiendo; el núcleo local funciona sin enviar mensajes a una IA externa.\n\n" +
                 "Para pedirle que lea o controle otras aplicaciones, activa voluntariamente el servicio de Accesibilidad desde el menú de Jarvis. No es necesario para conversar."
             )
             .setPositiveButton("ENTENDIDO", null)
