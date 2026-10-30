@@ -49,7 +49,7 @@ jobs:
 
       - name: Exportar checkpoint ajustado al formato JARVIS01
         run: |
-          python brain/export_android.py --checkpoint checkpoints/jarvis.pt --output brain/artifacts/jarvis-brain.bin
+          python brain/export_android.py --checkpoint checkpoints/jarvis-sft.pt --output brain/artifacts/jarvis-brain.bin
           python -m json.tool brain/artifacts/jarvis-brain.json
 
       - name: Publicar checkpoint experimental para evaluación
