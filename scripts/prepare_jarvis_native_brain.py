@@ -124,22 +124,22 @@ first = main.find("val brainFile = File(noBackupFilesDir")
 if first >= 0:
     finish = main.find("val serviceIntent = Intent(this, JarvisService::class.java)", first)
     if finish >= 0:
-        line_start = main.rfind("\\n", 0, first) + 1
-        main = main[:line_start] + main[finish - len(main[finish:]) if False else finish:]
+        line_start = main.rfind("\n", 0, first) + 1
+        main = main[:line_start] + main[finish:]
 # Drop any leftover file-gating declarations in the upgrade path.
-main = re.sub(r"(?m)^\\s*val brainFile = File\\(noBackupFilesDir,.*\\n", "", main)
+main = re.sub(r"(?m)^\s*val brainFile = File\(noBackupFilesDir,.*\n", "", main)
 main = re.sub(
-    r"(?m)^\\s*val modelAccepted = brainFile\\.exists\\(\\) \\|\\| statePrefs\\.getBoolean\\(.*\\n",
-    "                    val modelAccepted = true\\n",
+    r"(?m)^\s*val modelAccepted = brainFile\.exists\(\) \|\| statePrefs\.getBoolean\(.*\n",
+    "                    val modelAccepted = true\n",
     main
 )
 main = re.sub(r"(?i)qwen[0-9-]*", "motor neuronal propio", main)
 main = re.sub(r"(?i)litertlm", "", main)
 main = main.replace("Aprox. 932 MB, una sola vez", "sin descargar un modelo externo")
 main = main.replace("El modelo se descarga una vez al teléfono.", "Motor propio local, sin modelo lingüístico externo.")
-main = re.sub(r"(?m)^import java\\.io\\.File\\s*\\n", "", main) if "File(" not in main else main
+main = re.sub(r"(?m)^import java\.io\.File\s*\n", "", main) if "File(" not in main else main
 if "Qwen" in main or "litertlm" in main:
-    raise SystemExit("Quedó una referencia Qwen/LiteRT en MainActivity.kt:\\n" + "\\n".join(line for line in main.splitlines() if re.search(r"qwen|litertlm", line, re.I)))
+    raise SystemExit("Quedó una referencia Qwen/LiteRT en MainActivity.kt:\n" + "\n".join(line for line in main.splitlines() if re.search(r"qwen|litertlm", line, re.I)))
 if "private fun startJarvis()" in main and "val serviceIntent = Intent(this, JarvisService::class.java)" not in main:
     raise SystemExit("Se perdió el inicio del servicio Android.")
 main_path.write_text(main, encoding="utf-8")
