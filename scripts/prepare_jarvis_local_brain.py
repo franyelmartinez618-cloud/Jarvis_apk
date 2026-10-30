@@ -546,24 +546,24 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
         if (text.isBlank()) return false
 
         // Camera and flashlight.
-        if (Regex("\\b(abre|abrir|inicia|iniciar|enciende|abreme)\\\\b.*\\\\b(camara|camara del telefono)\\\\b").containsMatchIn(text) ||
-            Regex("\\\\b(toma|saca|haz)\\\\s+(una\\\\s+)?foto\\\\b").containsMatchIn(text)) {
+        if (Regex("\\b(abre|abrir|inicia|iniciar|enciende|abreme)\\b.*\\b(camara|camara del telefono)\\b").containsMatchIn(text) ||
+            Regex("\\b(toma|saca|haz)\\s+(una\\s+)?foto\\b").containsMatchIn(text)) {
             speak(openCameraForModel())
             return true
         }
-        if (Regex("\\\\b(enciende|prende|activa)\\\\b.*\\\\b(linterna|flash)\\\\b").containsMatchIn(text)) {
+        if (Regex("\\b(enciende|prende|activa)\\b.*\\b(linterna|flash)\\b").containsMatchIn(text)) {
             speak(setTorchForModel(true))
             return true
         }
-        if (Regex("\\\\b(apaga|desactiva)\\\\b.*\\\\b(linterna|flash)\\\\b").containsMatchIn(text)) {
+        if (Regex("\\b(apaga|desactiva)\\b.*\\b(linterna|flash)\\b").containsMatchIn(text)) {
             speak(setTorchForModel(false))
             return true
         }
 
         // Alarm and timer, supporting digits and common spoken Spanish numbers.
-        if (Regex("\\\\b(temporizador|temporizador de cuenta regresiva|cuenta regresiva|cronometro)\\\\b").containsMatchIn(text) ||
-            Regex("\\\\bpon (un )?timer\\\\b").containsMatchIn(text)) {
-            val amount = Regex("(\\\\d+|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|quince|veinte|treinta)\\\\s*(segundos?|secs?|minutos?|mins?|horas?)")
+        if (Regex("\\b(temporizador|temporizador de cuenta regresiva|cuenta regresiva|cronometro)\\b").containsMatchIn(text) ||
+            Regex("\\bpon (un )?timer\\b").containsMatchIn(text)) {
+            val amount = Regex("(\\d+|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|quince|veinte|treinta)\\s*(segundos?|secs?|minutos?|mins?|horas?)")
                 .find(text)
             val number = amount?.let { spanishNumber(it.groupValues[1]) }
             val unit = amount?.groupValues?.get(2).orEmpty()
@@ -580,9 +580,9 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
             return true
         }
 
-        if (Regex("\\\\b(alarma|despertador)\\\\b").containsMatchIn(text) &&
-            Regex("\\\\b(pon|ponme|crea|crear|configura|programa|despiertame)\\\\b").containsMatchIn(text)) {
-            val match = Regex("(?:a las|para las|a la)\\\\s+(\\\\d{1,2}|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)(?:\\\\s*(?::|y)\\\\s*(\\\\d{1,2}|media|cuarto))?")
+        if (Regex("\\b(alarma|despertador)\\b").containsMatchIn(text) &&
+            Regex("\\b(pon|ponme|crea|crear|configura|programa|despiertame)\\b").containsMatchIn(text)) {
+            val match = Regex("(?:a las|para las|a la)\\s+(\\d{1,2}|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)(?:\\s*(?::|y)\\s*(\\d{1,2}|media|cuarto))?")
                 .find(text)
             val hour = match?.let { spanishNumber(it.groupValues[1]) }
             if (hour == null || hour !in 0..23) {
@@ -596,25 +596,25 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
                 else -> minuteToken.toIntOrNull() ?: 0
             }
             var adjustedHour = hour
-            if (Regex("\\\\b(tarde|noche|pm)\\\\b").containsMatchIn(text) && adjustedHour in 1..11) adjustedHour += 12
-            if (Regex("\\\\b(mananas|manana|am)\\\\b").containsMatchIn(text) && adjustedHour == 12) adjustedHour = 0
+            if (Regex("\\b(tarde|noche|pm)\\b").containsMatchIn(text) && adjustedHour in 1..11) adjustedHour += 12
+            if (Regex("\\b(mananas|manana|am)\\b").containsMatchIn(text) && adjustedHour == 12) adjustedHour = 0
             speak(setAlarmForModel(adjustedHour, minute, "JARVIS"))
             return true
         }
 
         // Maps and web searches.
-        val mapMatch = Regex("^(?:como llegar a|navega(?:r)? a|llevame a|busca(?:r)?|encuentra)\\\\s+(.+?)\\\\s+(?:en|con)\\\\s+(?:google )?(?:maps|mapas)$")
+        val mapMatch = Regex("^(?:como llegar a|navega(?:r)? a|llevame a|busca(?:r)?|encuentra)\\s+(.+?)\\s+(?:en|con)\\s+(?:google )?(?:maps|mapas)$")
             .find(text)
         if (mapMatch != null) {
             speak(openMapsForModel(mapMatch.groupValues[1].trim()))
             return true
         }
-        val destination = Regex("^(?:como llegar a|navega(?:r)? a|llevame a|abre el mapa para)\\\\s+(.+)$").find(text)
+        val destination = Regex("^(?:como llegar a|navega(?:r)? a|llevame a|abre el mapa para)\\s+(.+)$").find(text)
         if (destination != null) {
             speak(openMapsForModel(destination.groupValues[1].trim()))
             return true
         }
-        val search = Regex("^(?:busca|buscar|buscame|investiga|consulta)\\\\s+(.+?)(?:\\\\s+en\\\\s+(?:google|internet|la web|web))?$")
+        val search = Regex("^(?:busca|buscar|buscame|investiga|consulta)\\s+(.+?)(?:\\s+en\\s+(?:google|internet|la web|web))?$")
             .find(text)
         if (search != null) {
             speak(searchWebForModel(search.groupValues[1].trim()))
@@ -622,12 +622,12 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
         }
 
         // Device controls.
-        val percent = Regex("(?:al|a|en)\\\\s*(\\\\d{1,3})\\\\s*(?:por ciento|%)?").find(text)?.groupValues?.get(1)?.toIntOrNull()
-        if (Regex("\\\\b(volumen|audio)\\\\b").containsMatchIn(text) &&
-            Regex("\\\\b(pon|sube|baja|ajusta|ajustar|cambia|establece)\\\\b").containsMatchIn(text)) {
+        val percent = Regex("(?:al|a|en)\\s*(\\d{1,3})\\s*(?:por ciento|%)?").find(text)?.groupValues?.get(1)?.toIntOrNull()
+        if (Regex("\\b(volumen|audio)\\b").containsMatchIn(text) &&
+            Regex("\\b(pon|sube|baja|ajusta|ajustar|cambia|establece)\\b").containsMatchIn(text)) {
             val value = percent ?: when {
-                Regex("\\\\b(sube|aumenta)\\\\b").containsMatchIn(text) -> 75
-                Regex("\\\\b(baja|disminuye)\\\\b").containsMatchIn(text) -> 25
+                Regex("\\b(sube|aumenta)\\b").containsMatchIn(text) -> 75
+                Regex("\\b(baja|disminuye)\\b").containsMatchIn(text) -> 25
                 else -> null
             }
             if (value != null) {
@@ -635,8 +635,8 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
                 return true
             }
         }
-        if (Regex("\\\\b(brillo|iluminacion de pantalla)\\\\b").containsMatchIn(text) &&
-            Regex("\\\\b(pon|sube|baja|ajusta|cambia|establece)\\\\b").containsMatchIn(text)) {
+        if (Regex("\\b(brillo|iluminacion de pantalla)\\b").containsMatchIn(text) &&
+            Regex("\\b(pon|sube|baja|ajusta|cambia|establece)\\b").containsMatchIn(text)) {
             if (percent != null) {
                 speak(setScreenBrightnessForModel(percent))
                 return true
@@ -645,21 +645,21 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
             return true
         }
         val setting = when {
-            Regex("\\\\b(wifi|wi fi|red inalambrica)\\\\b").containsMatchIn(text) -> "wifi"
-            Regex("\\\\b(bluetooth)\\\\b").containsMatchIn(text) -> "bluetooth"
-            Regex("\\\\b(accesibilidad|control de pantalla)\\\\b").containsMatchIn(text) -> "accesibilidad"
-            Regex("\\\\b(sobre otras aplicaciones|superposicion|ventanas flotantes)\\\\b").containsMatchIn(text) -> "superposicion"
-            Regex("\\\\b(bateria|ahorro de energia)\\\\b").containsMatchIn(text) -> "bateria"
-            Regex("\\\\b(ajustes|configuracion|permisos)\\\\b").containsMatchIn(text) -> "app"
+            Regex("\\b(wifi|wi fi|red inalambrica)\\b").containsMatchIn(text) -> "wifi"
+            Regex("\\b(bluetooth)\\b").containsMatchIn(text) -> "bluetooth"
+            Regex("\\b(accesibilidad|control de pantalla)\\b").containsMatchIn(text) -> "accesibilidad"
+            Regex("\\b(sobre otras aplicaciones|superposicion|ventanas flotantes)\\b").containsMatchIn(text) -> "superposicion"
+            Regex("\\b(bateria|ahorro de energia)\\b").containsMatchIn(text) -> "bateria"
+            Regex("\\b(ajustes|configuracion|permisos)\\b").containsMatchIn(text) -> "app"
             else -> null
         }
-        if (setting != null && Regex("\\\\b(ajustes|configuracion|abre|abrir|activa|activar|permiso)\\\\b").containsMatchIn(text)) {
+        if (setting != null && Regex("\\b(ajustes|configuracion|abre|abrir|activa|activar|permiso)\\b").containsMatchIn(text)) {
             speak(openSettingsForModel(setting))
             return true
         }
 
         // Open arbitrary apps even when the user says "arranca", "ejecuta" or "ponme".
-        val app = Regex("^(?:por favor )?(?:abre|abrime|abrir|inicia|iniciar|ejecuta|ejecutar|lanza|arranca|ponme|quiero abrir)\\\\s+(?:la app |la aplicacion |aplicacion |app |el juego |el )?(.+)$")
+        val app = Regex("^(?:por favor )?(?:abre|abrime|abrir|inicia|iniciar|ejecuta|ejecutar|lanza|arranca|ponme|quiero abrir)\\s+(?:la app |la aplicacion |aplicacion |app |el juego |el )?(.+)$")
             .find(text)
         if (app != null) {
             speak(openAppFromModel(app.groupValues[1].trim()))
@@ -708,6 +708,11 @@ respond = r'''    private suspend fun respondNaturally(input: String) {
     }
 
 '''
+# Recompute after inserting the router; the earlier offsets no longer match the modified source.
+start = service.find("    private suspend fun respondNaturally(input: String) {")
+end = service.find("    private fun beep() {", start)
+if start < 0 or end < 0:
+    raise SystemExit("No se pudo aislar la respuesta fija anterior.")
 service = service[:start] + respond + service[end:]
 
 # If the Vosk service starts but the LLM is still loading, keep the voice path available and retry.
