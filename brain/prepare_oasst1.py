@@ -70,7 +70,7 @@ def build_pairs(messages):
             continue
         seen.add(key)
         pairs.append({
-            "text": f"### Usuario:\\n{question}\\n### JARVIS:\\n{answer}",
+            "text": f"### Usuario:\n{question}\n### JARVIS:\n{answer}",
             "group_id": str(group_id),
             "origin": "OpenAssistant OASST1 human-reviewed Spanish conversation",
         })
@@ -115,7 +115,7 @@ def main():
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="utf-8") as stream:
         for item in pairs:
-            stream.write(json.dumps(item, ensure_ascii=False) + "\\n")
+            stream.write(json.dumps(item, ensure_ascii=False) + "\n")
 
     registry = {
         "sources": [{
@@ -131,7 +131,7 @@ def main():
         }]
     }
     registry_path.parent.mkdir(parents=True, exist_ok=True)
-    registry_path.write_text(json.dumps(registry, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    registry_path.write_text(json.dumps(registry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(
         f"OASST1 filtrado: {len(messages):,} mensajes revisados · "
         f"{len(pairs):,} pares humanos en español · sin respuestas sintéticas/modeladas."
