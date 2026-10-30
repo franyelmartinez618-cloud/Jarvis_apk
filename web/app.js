@@ -13,7 +13,7 @@
   let toastTimer = 0;
   let transcript = loadJson(CHAT_KEY, []);
   let memory = loadJson(MEMORY_KEY, {});
-  let lastTopic = "";
+  let lastTopic = [...transcript].reverse().find((item) => item.role === "user")?.text || "";
 
   function loadJson(key, fallback) {
     try {
@@ -105,6 +105,12 @@
   }
 
   function answerMemory(q) {
+    const nameMatch = q.match(/^(?:me llamo|mi nombre es)\s+(.+)$/i);
+    if (nameMatch) {
+      memory.nombre = nameMatch[1].trim();
+      save();
+      return "Mucho gusto, " + memory.nombre + ". Guardé tu nombre en este dispositivo.";
+    }
     if (/^(?:que recuerdas|que sabes de mi|muestrame mi memoria|que tienes guardado)$/.test(q)) {
       const parts = [];
       if (memory.nombre) parts.push("Tu nombre: " + memory.nombre);
@@ -193,6 +199,15 @@
     if (/\b(estas conectado|usas internet|nube|otra ia|gemini|chatgpt|qwen|modelo externo)\b/.test(q)) {
       return "No envío tus mensajes a otra IA ni uso una API conversacional. El chat se resuelve aquí mismo. La conexión se utiliza para descargar la interfaz y sus mejoras web; el núcleo local sigue funcionando sin conexión una vez cargado.";
     }
+    if (/\b(que es la inteligencia artificial|que significa inteligencia artificial|explicame la ia)\b/.test(q)) {
+      return "La inteligencia artificial es un conjunto de métodos que permite a un sistema reconocer patrones, resolver tareas o producir respuestas. Jarvis, en esta etapa, usa lógica y habilidades programadas para este proyecto; todavía no tiene un modelo generativo entrenado desde cero.";
+    }
+    if (/\b(que es jarvis|que es este proyecto)\b/.test(q)) {
+      return "Jarvis es tu asistente Android. Estamos separando su interfaz web actualizable de las funciones nativas del teléfono. La conversación básica corre localmente, conserva memoria en este dispositivo y no llama a servicios de IA.";
+    }
+    if (/\b(que significa sin conexion|funciona sin internet|funciona offline)\b/.test(q)) {
+      return "Cuando la interfaz ya está cargada, el chat local y la memoria funcionan sin conexión. Internet solo hace falta para recibir mejoras de la interfaz web y para abrir búsquedas externas que tú pidas.";
+    }
     if (/\b(gracias|te agradezco)\b/.test(q)) return "Con gusto. Seguimos.";
     if (/\b(no entiendes|no me entiendes|estas equivocado)\b/.test(q)) return "Dime qué parte interpreté mal. Puedo corregir el contexto de esta conversación y guardar una preferencia local para no repetir el error.";
 
@@ -213,10 +228,10 @@
     if (/\b(desplaza hacia arriba|sube la pantalla|desliza hacia arriba|scroll arriba)\b/.test(q)) return native("scroll_up");
     if (/\b(activar accesibilidad|activa accesibilidad|control de pantalla|activar control de pantalla)\b/.test(q)) return native("accessibility_settings");
 
-    const search = raw.match(/^(?:busca|buscar|investiga|consulta)\s+(.+)$/i);
-    if (search) return native("web_search", search[1].trim());
     const video = raw.match(/^(?:busca|buscar)\s+(.+)\s+en\s+youtube$/i);
     if (video) return native("youtube_search", video[1].trim());
+    const search = raw.match(/^(?:busca|buscar|investiga|consulta)\s+(.+)$/i);
+    if (search) return native("web_search", search[1].trim());
 
     const call = raw.match(/^(?:llama|llamar|marca)\s+(?:al\s+)?([+\d][+\d\s-]{6,})$/i);
     if (call) {
