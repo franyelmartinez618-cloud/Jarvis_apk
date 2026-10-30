@@ -26,6 +26,17 @@ if dep not in gradle_text:
     )
 if dep not in gradle_text:
     raise SystemExit("No se pudo añadir LiteRT-LM al módulo Android.")
+legacy_kotlin_options = '    kotlinOptions {\n        jvmTarget = "17"\n    }\n'
+gradle_text = gradle_text.replace(legacy_kotlin_options, "")
+compiler_block = '''kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
+'''
+if "compilerOptions {" not in gradle_text:
+    gradle_text = gradle_text.replace("dependencies {", compiler_block + "dependencies {", 1)
 app_gradle.write_text(gradle_text, encoding="utf-8")
 
 service = service_path.read_text(encoding="utf-8")
@@ -691,6 +702,7 @@ main = main.replace(
 )
 
 permission_methods = r'''    private fun auditRuntimePermissionsAfterUpgrade() {
+        if (!setupPrefs.getBoolean("setup_complete", false)) return
         val currentVersion = try { packageManager.getPackageInfo(packageName, 0).versionCode }
             catch (_: Exception) { 0 }
         val auditedVersion = setupPrefs.getInt("permissions_audited_version", 0)
@@ -797,7 +809,10 @@ native_lines = '''        <uses-native-library android:name="libvndksupport.so" 
         <uses-native-library android:name="libOpenCL.so" android:required="false" />
 '''
 if "libOpenCL.so" not in manifest:
-    manifest = manifest.replace("    <application\n", "    <application\n" + native_lines, 1)
+    app_end = '        android:theme="@android:style/Theme.Material.Light.NoActionBar">\\n'
+    if app_end not in manifest:
+        raise SystemExit("No se encontró el final de los atributos de application en el manifiesto.")
+    manifest = manifest.replace(app_end, app_end + native_lines, 1)
 if "android.permission.ACCESS_NETWORK_STATE" not in manifest:
     manifest = manifest.replace(
         '    <uses-permission android:name="android.permission.INTERNET" />',
