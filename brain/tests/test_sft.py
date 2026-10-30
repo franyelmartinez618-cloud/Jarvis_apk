@@ -11,12 +11,17 @@ class InstructionTuningTests(unittest.TestCase):
     def test_synthetic_math_is_excluded_from_sft_by_default(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            authored = {"text": "### Usuario:\n¿Qué es una API?\n### JARVIS:\nUna interfaz de programación."}
+            authored = [
+                {"text": f"### Usuario:\n¿Qué es una API? Caso {index}.\n### JARVIS:\nUna interfaz de programación {index}."}
+                for index in range(10)
+            ]
             generated = {"text": "### Usuario:\nCalcula 4 + 2.\n### JARVIS:\n4 + 2 = 6."}
-            (root / "jarvis_core.jsonl").write_text(json.dumps(authored) + "\n", encoding="utf-8")
+            (root / "jarvis_core.jsonl").write_text(
+                "".join(json.dumps(item) + "\n" for item in authored), encoding="utf-8"
+            )
             (root / "zz_generated_curriculum.jsonl").write_text(json.dumps(generated) + "\n", encoding="utf-8")
-            self.assertEqual(len(load_pairs(root)), 1)
-            self.assertEqual(len(load_pairs(root, include_generated=True)), 2)
+            self.assertEqual(len(load_pairs(root)), 10)
+            self.assertEqual(len(load_pairs(root, include_generated=True)), 11)
 
     def test_prompt_tokens_are_masked_and_answer_is_trained(self):
         inputs, targets = encode_pair(
