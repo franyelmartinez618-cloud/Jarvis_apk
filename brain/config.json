@@ -1,0 +1,1 @@
+{"context":512,"width":256,"layers":6,"heads":8,"dropout":0.1,"batch_size":16,"steps":50000,"learning_rate":0.0003,"log_every":500}
