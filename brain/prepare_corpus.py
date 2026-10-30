@@ -92,7 +92,7 @@ def main():
     rows = []
     manifest = []
     for path in sorted(p for p in source.rglob("*") if p.is_file()) if source.exists() else []:
-        if path.name == "SOURCES.json" or path.suffix.lower() not in EXTS:
+        if path.name in {"SOURCES.json", "README.md"} or path.suffix.lower() not in EXTS:
             continue
         provenance = provenance_for(path, source, registry)
         for text in iter_text(path):
