@@ -1,59 +1,76 @@
-# Jarvis — asistente personal para Android
+# Jarvis — asistente personal Android
 
-Proyecto personal para Android (objetivo inicial: Redmi Note 13). El APK se compila con GitHub Actions.
+Jarvis conserva el mismo paquete Android y repositorio. La aplicación pasa a una arquitectura híbrida: un contenedor Android pequeño y una interfaz web que puede actualizarse sin reemplazar el APK.
 
-## Funciones de esta versión compilada
+## Qué cambia en esta versión
 
-- Activación por voz: **“Jarvis, activa”**.
-- Reconocimiento de activación y de órdenes en español con Vosk local; las órdenes básicas no necesitan una API de voz en la nube.
-- Tras activarlo, mantiene una conversación por varios turnos sin pedir la frase de activación cada vez. La sesión vuelve a espera tras silencio o al alcanzar el límite de turnos.
-- Abre aplicaciones por el nombre que aparece en el teléfono.
-- Control opcional de pantalla mediante Accesibilidad: pulsar controles visibles por texto, escribir en el campo enfocado, desplazarse, volver atrás, ir al inicio, abrir notificaciones/ajustes rápidos y leer el texto visible.
-- Las acciones de pantalla que puedan enviar, publicar, pagar o borrar requieren una segunda confirmación por voz; Accesibilidad debe activarse manualmente desde Ajustes de Android.
-- Busca contactos para llamadas y mensajes.
-- Pide confirmación antes de realizar llamadas o enviar SMS. Los SMS pueden generar cargos según el operador.
-- WhatsApp se abre con el texto preparado: la persona usuaria todavía toca **Enviar**.
-- Motor local propio de intenciones y habilidades deterministas: comandos, fecha/hora, navegación y acciones de pantalla. No usa Gemini, Qwen ni una IA conversacional remota; no descarga modelos de lenguaje de terceros.
-- Pantalla oscura renovada, icono vectorial, lista de permisos y estado para ver qué falta habilitar.
+- Se elimina el uso del micrófono, el reconocimiento de voz, el registro biométrico de voz y los servicios de escucha en segundo plano.
+- Android ya no solicita permiso de micrófono. El flujo de compilación comprueba que RECORD_AUDIO no aparezca en el manifiesto final.
+- La pantalla principal es un chat de texto, no un menú con varios pasos.
+- La conversación, historial y recuerdos se procesan y guardan localmente en el dispositivo.
+- No se envían mensajes a Gemini, ChatGPT, Qwen, OpenAI ni a otra API conversacional.
+- El control de pantalla es opcional. Solo se activa manualmente en Ajustes > Accesibilidad; no es necesario para conversar.
+- Las acciones de pantalla que pueden enviar, publicar, pagar, comprar o borrar solicitan confirmación.
 
-## Funcionamiento offline
+## Actualizaciones sin APK para el chat y la interfaz
 
-JARVIS no envía mensajes de voz o texto a Gemini ni a otra IA remota, y no descarga modelos de lenguaje como Qwen. La respuesta de conversación general se basa en un motor local de intenciones y respuestas mantenido en este proyecto; cuando no tiene una habilidad para contestar, lo reconoce en lugar de inventar respuestas.
+La interfaz vive en la carpeta web y se publica en GitHub Pages mediante el workflow deploy-jarvis-web.yml.
 
-La detección y el reconocimiento de voz usan motores/modelos de voz empaquetados que funcionan localmente en el teléfono. No son un modelo conversacional creado desde cero. Entrenar un modelo neuronal completo propio requeriría un proyecto separado de datos y entrenamiento; esta compilación no se presenta como una IA general.
+URL web prevista:
 
-La conexión a Internet que conserva la app se utiliza para revisar y descargar actualizaciones oficiales desde GitHub. No se usa para inferencia de IA.
+https://franyelmartinez618-cloud.github.io/Jarvis_apk/
 
-## Permisos y límites de Android
+Después de instalar por primera vez el nuevo contenedor web:
 
-Concede solo los permisos que vayas a utilizar. El micrófono es necesario para escuchar; los contactos, para buscar nombres; llamadas y SMS, para esas acciones; notificaciones, para informar del estado.
+1. Cada cambio en web/** se publica como página estática desde GitHub Actions.
+2. Jarvis consulta el identificador de versión mientras está abierto y recarga la interfaz cuando detecta un cambio.
+3. El service worker guarda los archivos para que la conversación local siga abriendo cuando no hay conexión.
+4. No se descarga ni instala un APK para cambios de HTML, CSS, JavaScript, respuestas, reglas o habilidades que ya estén disponibles en el puente nativo.
 
-Android restringe el lanzamiento de otras aplicaciones desde servicios en segundo plano. Para abrir apps por voz mientras Jarvis escucha en segundo plano, activa **Mostrar sobre otras apps** desde el botón de permisos de Jarvis. Para interactuar con controles visibles dentro de otras apps, pulsa **Activar control de pantalla (Accesibilidad)** y habilita Jarvis manualmente en Ajustes de Accesibilidad. El servicio procesa la pantalla por orden y no guarda ni transmite eventos. En Xiaomi/Redmi, las restricciones de batería y el inicio automático también pueden afectar la escucha continua.
+Configuración única de GitHub Pages: en el repositorio abre Settings > Pages y elige GitHub Actions como Source. GitHub Pages solo se puede desplegar cuando esa fuente está habilitada. Después, el workflow publica automáticamente cada cambio web.
 
-En la primera apertura aparece una ventana de configuración y, después, Android solicita los permisos individualmente. La voz se registra con dos muestras de unos tres segundos. El verificador se precarga en segundo plano y mantiene una sesión local de confianza durante 90 segundos para evitar calcular la huella completa de voz en cada orden. La escucha limita cada turno a ocho segundos para no quedarse esperando indefinidamente; las órdenes largas conviene decirlas en frases separadas. Esto reduce la espera; la precisión real debe comprobarse en el teléfono. Android/MIUI todavía pueden detener servicios y el usuario debe habilitar Inicio automático en Xiaomi si esa opción existe.
+La copia web que viene dentro del APK sirve como respaldo inicial/sin conexión. Cuando hay conexión, la app carga la versión publicada.
 
-## Actualizaciones desde el móvil
+## Qué todavía requiere APK
 
-Cuando un cambio se integra en `main`, GitHub Actions compila y publica el APK firmado automáticamente. JARVIS comprueba si hay una versión nueva al abrirse. Cuando se instala una versión nueva, la próxima apertura muestra una cuenta regresiva de tres segundos y reinicia el servicio local si estaba activo antes de la actualización. **Android siempre exige que confirmes la instalación**: una app normal no puede reemplazarse silenciosamente.
+La web puede actualizar la interfaz, memoria local, reglas conversacionales y uso de funciones nativas que ya estén expuestas por el puente Android. No puede añadir por sí sola permisos nuevos, servicios del sistema, código Kotlin, cambios del manifiesto ni capacidades nativas que aún no existen.
 
-Para publicar actualizaciones permanentes hace falta una clave de firma estable. Se configura una sola vez en tu PC (no dentro de la carpeta del repositorio). En PowerShell ejecuta estos dos comandos desde una carpeta segura donde guardar el archivo:
+Esos cambios siguen necesitando una nueva versión nativa. La aplicación actual se instala desde APK de GitHub, no desde Google Play, por lo que no puede utilizar el mecanismo de actualizaciones de Play hasta que se publique e instale desde Play Store. Google Play ofrece actualizaciones flexibles e inmediatas para aplicaciones distribuidas por esa tienda; el usuario debe tener una instalación elegible de Play. Consulta la documentación oficial de actualizaciones integradas:
+https://developer.android.com/guide/playcore/in-app-updates
 
-```powershell
-keytool -genkeypair -v -keystore "$PWD\jarvis-release.jks" -alias jarvis -keyalg RSA -keysize 2048 -validity 10000 -storepass "JarvisKeystorePassword_2026" -keypass "JarvisKeystorePassword_2026" -dname "CN=Jarvis, O=Personal App, C=CO"
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("$PWD\jarvis-release.jks")) | Set-Clipboard
-```
+No se intenta instalar código ejecutable Android desde una web: solo se actualiza la interfaz y lógica JavaScript interpretada en WebView.
 
-Después abre [los secretos del repositorio en GitHub](https://github.com/franyelmartinez618-cloud/Jarvis_apk/settings/secrets/actions), pulsa **New repository secret**, pon como nombre `JARVIS_KEYSTORE_BASE64` y pega con Ctrl+V el valor que quedó en el portapapeles. No publiques ni subas el archivo `.jks`; conserva una copia de respaldo en un lugar seguro. El alias y la contraseña están fijados en el flujo de compilación, por lo que **solo hace falta crear ese único secreto**.
+## Conversación local: alcance real
 
-Hasta que exista ese secreto, GitHub seguirá compilando un APK de prueba que caduca a los 7 días y no publicará actualizaciones permanentes. La primera instalación firmada estable puede requerir reinstalar el APK de prueba que tengas ahora, porque las compilaciones de prueba anteriores no compartían una firma persistente. Las instalaciones futuras podrán actualizarse sobre la misma app, con la confirmación de Android.
+El núcleo inicial de conversación está escrito específicamente para este proyecto, sin pesos ni API de un modelo generativo externo. Incluye interpretación de comandos, respuestas propias, operaciones aritméticas sencillas, contexto de conversación y recuerdos locales. Todavía NO es un modelo generativo general entrenado desde cero y no puede responder con la amplitud de una IA grande. No se debe presentar como AGI ni como un LLM autónomo.
 
-## Descargar el APK de prueba
+Una IA generativa real entrenada desde cero requiere un corpus de entrenamiento, infraestructura de cómputo, un proceso de evaluación y ciclos de entrenamiento. No se obtiene únicamente cambiando la pantalla ni puede prometerse una calidad equivalente a los modelos grandes con este motor de reglas.
 
-1. Abre [las ejecuciones de “Construir APK de Jarvis”](https://github.com/franyelmartinez618-cloud/Jarvis_apk/actions/workflows/prepare-jarvis.yml).
-2. En una ejecución completada, baja hasta **Artifacts**.
-3. Descarga **jarvis-apk** y extrae `app-debug.apk`.
-## Código y compilación
+## Acciones disponibles en esta base
 
-El proyecto Android base está en `jarvis-android.zip`. Durante la compilación, `scripts/prepare_jarvis.py` prepara la conversación, el reconocimiento local, la pantalla y el icono; `scripts/prepare_jarvis_updates.py` agrega el verificador de versiones y la configuración de firma. El flujo de `.github/workflows/prepare-jarvis.yml` descarga los modelos y compila el APK.
+- Abrir aplicaciones instaladas por nombre.
+- Leer el texto visible de la pantalla, si se activa Accesibilidad.
+- Pulsar controles visibles y escribir en el campo enfocado, si se activa Accesibilidad.
+- Volver atrás, ir al inicio y desplazarse por una pantalla, si se activa Accesibilidad.
+- Abrir búsquedas web o de YouTube solicitadas por la persona.
+- Abrir el marcador telefónico, sin iniciar una llamada automáticamente.
+- Recordar el nombre y notas que la persona decida guardar. Los recuerdos se quedan en almacenamiento local del dispositivo.
 
-No guardes contraseñas, datos personales ni claves de API en el repositorio.
+La lectura y control de pantalla pueden exponer contenido privado a la función de Accesibilidad. Actívala solo si realmente necesitas esas acciones y revisa sus permisos en Android.
+
+## Compilación
+
+El proyecto Android base se mantiene en jarvis-android.zip. El flujo de APK:
+
+1. Extrae el proyecto base.
+2. Ejecuta los preparadores de accesibilidad, firma y contenedor web.
+3. Elimina el código fuente de voz legado, los modelos de voz, las bibliotecas nativas de voz y todos los permisos Android que ya no se necesitan.
+4. Compila un APK de depuración y, si está configurada la firma estable, el APK de lanzamiento.
+
+Los cambios solo en web/** no disparan una nueva compilación APK: únicamente publican la interfaz web.
+
+## Privacidad
+
+La conversación y memoria no se envían a un servidor de IA. La conexión de red se utiliza para cargar y actualizar los archivos estáticos de la interfaz; las búsquedas externas solo se abren cuando la persona las solicita. Si se utiliza el control de pantalla, la lectura se procesa localmente en Android y depende de la autorización de Accesibilidad.
+
+No guardes contraseñas, claves privadas ni secretos en el repositorio.
