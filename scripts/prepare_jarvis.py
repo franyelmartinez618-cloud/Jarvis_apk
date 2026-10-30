@@ -12,8 +12,9 @@ def replace_once(text, old, new, label):
 # ── Servicio: reconocimiento offline y habilidades locales.
 service_path = root / "app/src/main/java/com/jarvis/personal/JarvisService.kt"
 s = service_path.read_text(encoding="utf-8")
-# The base project loader expects model-en; the workflow bundles Spanish Vosk as model-es.
-s = s.replace('"model-en"', '"model-es"')
+# The base project loader expects a folder named model-en; the workflow bundles Spanish Vosk in model-es.
+# Point every loader and its diagnostic text at the Spanish model folder used by the build.
+s = s.replace("model-en", "model-es")
 s = s.replace("import android.media.AudioManager\n", "import android.media.AudioManager\nimport android.media.AudioFormat\nimport android.media.AudioRecord\nimport android.media.MediaRecorder\n", 1)
 s = s.replace("import org.vosk.LibVosk\n", "import org.json.JSONObject\nimport org.vosk.LibVosk\nimport org.vosk.Recognizer\n", 1)
 s = s.replace("import java.io.FileOutputStream\n", "import java.io.FileOutputStream\nimport java.net.URLEncoder\n", 1)
