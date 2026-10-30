@@ -24,7 +24,9 @@ def main():
         tokenizer.vocab_size, config["context"], config["width"],
         config["layers"], config["heads"], config["dropout"],
     )
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     model.load_state_dict(checkpoint["model"])
+    model.to(device)
     model.eval()
     questions = [
         json.loads(line)
