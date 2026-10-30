@@ -53,8 +53,11 @@ def main():
         for key in tensors:
             if key not in state:
                 raise SystemExit(f"Falta el tensor requerido: {key}")
-            tensor = state[key].detach().to(device="cpu", dtype=torch.float32).contiguous()
-            stream.write(tensor.numpy().astype("<f4", copy=False).tobytes(order="C"))
+            tensor = state[key].detach().to(device="cpu", dtype=torch.float32).contiguous().view(-1)
+            # Use the Python standard library only; the exporter must not require NumPy.
+            for offset in range(0, tensor.numel(), 8192):
+                values = tensor[offset:offset + 8192].tolist()
+                stream.write(struct.pack(f"<{len(values)}f", *values))
     temporary.replace(output)
 
     digest = hashlib.sha256(output.read_bytes()).hexdigest()
