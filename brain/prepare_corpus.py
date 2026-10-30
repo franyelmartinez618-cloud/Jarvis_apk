@@ -15,14 +15,23 @@ def iter_text(path):
     if path.suffix.lower() in {".txt", ".md"}:
         yield path.read_text(encoding="utf-8", errors="replace")
     elif path.suffix.lower() == ".jsonl":
+        grouped = {}
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
             try:
                 item = json.loads(line)
                 value = item.get("text", "")
-                if isinstance(value, str) and value.strip():
+                if not isinstance(value, str) or not value.strip():
+                    continue
+                group_id = item.get("group_id")
+                if group_id:
+                    grouped.setdefault(str(group_id), []).append(value)
+                else:
                     yield value
             except json.JSONDecodeError:
                 continue
+        # Keep all messages from one OASST conversation together for pretraining validation.
+        for group_id in sorted(grouped):
+            yield "\n\n".join(grouped[group_id])
 
 
 def load_registry(source: Path):
