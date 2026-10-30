@@ -50,6 +50,10 @@ jobs:
         run: |
           python brain/train_sft.py --checkpoint checkpoints/jarvis-large.pt --data data/seed --config brain/sft-config.json --out checkpoints/jarvis-large-sft.pt
 
+      - name: Evaluar el checkpoint grande
+        run: |
+          python brain/evaluate.py --checkpoint checkpoints/jarvis-large-sft.pt --questions brain/eval/questions.jsonl --output reports/jarvis-large-quality.json --max-tokens 128
+
       - name: Exportar formato nativo Android
         run: |
           python brain/export_android.py --checkpoint checkpoints/jarvis-large-sft.pt --output brain/artifacts/jarvis-brain-large.bin
@@ -65,6 +69,7 @@ jobs:
             checkpoints/jarvis-large-sft.pt
             checkpoints/jarvis-large-sft-last.pt
             checkpoints/jarvis-large.metrics.jsonl
+            reports/jarvis-large-quality.json
             brain/artifacts/jarvis-brain-large.bin
             brain/artifacts/jarvis-brain-large.json
           if-no-files-found: error
