@@ -12,7 +12,8 @@ VOICE_SOURCE = (ROOT / "scripts" / "prepare_jarvis_voice_unlock.py").read_text(e
 def normalize(text: str) -> str:
     text = unicodedata.normalize("NFD", text.lower())
     text = "".join(char for char in text if unicodedata.category(char) != "Mn")
-    return re.sub(r"\s+", " ", re.sub(r"[¿?¡!.,;]", " ", text)).strip()
+    text = re.sub(r"\s+", " ", re.sub(r"[¿?¡!.,;]", " ", text)).strip()
+    return re.sub(r"^(?:(?:oye|hey|ey)\s+)?jarvis\b\s*", "", text).strip()
 
 
 def resolve_intent(text: str, last_app: str | None = None) -> tuple[str, str | None, str | None]:
