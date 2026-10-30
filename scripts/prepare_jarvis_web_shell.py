@@ -24,10 +24,17 @@ manifest = tree.getroot()
 # This build is text-first. No microphone permission or voice-triggered services are registered.
 remove_permissions = {
     "android.permission.RECORD_AUDIO",
+    "android.permission.FOREGROUND_SERVICE",
     "android.permission.FOREGROUND_SERVICE_MICROPHONE",
     "android.permission.REQUEST_INSTALL_PACKAGES",
     "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
     "android.permission.RECEIVE_BOOT_COMPLETED",
+    "android.permission.READ_CONTACTS",
+    "android.permission.READ_PHONE_STATE",
+    "android.permission.CALL_PHONE",
+    "android.permission.SEND_SMS",
+    "android.permission.POST_NOTIFICATIONS",
+    "android.permission.SYSTEM_ALERT_WINDOW",
 }
 for child in list(manifest):
     if child.tag == "uses-permission" and child.get(ANDROID + "name") in remove_permissions:
@@ -39,10 +46,15 @@ application = manifest.find("application")
 if application is None:
     raise SystemExit("AndroidManifest.xml no contiene application")
 
-# Remove all ways to start the previous microphone service at launch or boot.
+# The text-first app has no microphone, boot receiver or background speech service.
+# Keep only the explicitly enabled accessibility service among the old service declarations.
 for child in list(application):
     name = child.get(ANDROID + "name", "")
-    if any(token in name for token in ("JarvisService", "WakeWordListener", "VoiceSetupActivity", "BootReceiver")):
+    if child.tag == "service" and "JarvisAccessibilityService" not in name:
+        application.remove(child)
+    elif child.tag == "receiver":
+        application.remove(child)
+    elif child.tag == "activity" and "VoiceSetupActivity" in name:
         application.remove(child)
 
 # Ensure network access for the hosted web shell. It is not an AI endpoint.
@@ -182,10 +194,12 @@ class MainActivity : Activity() {
     }
 
     private fun openExternal(uri: Uri) {
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        } catch (_: Exception) {
-            Toast.makeText(this, "No pude abrir ese enlace.", Toast.LENGTH_SHORT).show()
+        runOnUiThread {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, uri))
+            } catch (_: Exception) {
+                Toast.makeText(this, "No pude abrir ese enlace.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
