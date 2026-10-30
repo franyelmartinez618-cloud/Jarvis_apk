@@ -1,0 +1,30 @@
+name: Validar núcleo propio y web de JARVIS
+on:
+  push:
+    branches: [ "feat/jarvis-native-brain-and-web-runtime-20261030" ]
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "brain/**"
+      - "web/**"
+      - ".github/workflows/validate-jarvis-core.yml"
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax-check Python
+        run: python -m compileall -q brain
+      - name: Test tokenizer
+        working-directory: brain
+        run: python -m unittest discover -s tests -v
+      - name: Syntax-check web runtime
+        run: node --check web/app.js && node --check web/sw.js
+      - name: Validate PWA manifest
+        run: python -m json.tool web/manifest.webmanifest >/dev/null
