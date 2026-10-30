@@ -54,7 +54,7 @@ def main():
     train_ids = torch.tensor(tokenizer.encode(train_text), dtype=torch.long)
     validation_ids = torch.tensor(tokenizer.encode(validation_text), dtype=torch.long)
     context = int(config["context"])
-    if len(train_ids) < context * 4 or len(validation_ids) < context * 2:
+    if len(train_ids) < int(config.get("minimum_train_bytes", context * 4)) or len(validation_ids) < int(config.get("minimum_validation_bytes", context * 2)):
         raise SystemExit(
             f"Corpus insuficiente para contexto {context}: "
             f"train={len(train_ids):,} bytes, validation={len(validation_ids):,} bytes."
@@ -135,8 +135,7 @@ def main():
         measurements = []
         for _ in range(eval_batches):
             inputs, targets = make_batch(validation_ids)
-            with torch.autocast(device_type="cuda", dtype=amp_dtype, enabled=device == "cuda"):
-                _, loss = model(inputs, targets)
+            autocast = (torch.autocast(device_type="cuda", dtype=amp_dtype)\n                        if device == "cuda" else nullcontext())\n            with autocast:\n                _, loss = model(inputs, targets)
             measurements.append(float(loss.item()))
         model.train()
         return sum(measurements) / len(measurements)
