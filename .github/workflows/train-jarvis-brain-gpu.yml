@@ -48,7 +48,7 @@ jobs:
 
       - name: Exportar formato nativo Android
         run: |
-          python brain/export_android.py --checkpoint checkpoints/jarvis-large.pt --output brain/artifacts/jarvis-brain-large.bin
+          python brain/export_android.py --checkpoint checkpoints/jarvis-large-sft.pt --output brain/artifacts/jarvis-brain-large.bin
           python -m json.tool brain/artifacts/jarvis-brain-large.json
 
       - name: Publicar checkpoint para evaluación
