@@ -64,12 +64,27 @@ jobs:
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis.py" "$PROJECT"
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_updates.py" "$PROJECT"
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_voice_unlock.py" "$PROJECT"
+          python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_local_brain.py" "$PROJECT"
           MANIFEST="$PROJECT/app/src/main/AndroidManifest.xml"
           SERVICE="$PROJECT/app/src/main/java/com/jarvis/personal/JarvisService.kt"
+          TOOLS="$PROJECT/app/src/main/java/com/jarvis/personal/JarvisTools.kt"
+          PARSER="$PROJECT/app/src/main/java/com/jarvis/personal/Parser.kt"
           grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST"
+          grep -q 'android.permission.CAMERA' "$MANIFEST"
+          grep -q 'android.permission.WRITE_SETTINGS' "$MANIFEST"
+          grep -q 'com.android.alarm.permission.SET_ALARM' "$MANIFEST"
           grep -q 'AudioRecord' "$SERVICE"
           grep -q 'Recognizer' "$SERVICE"
           grep -q 'speak(' "$SERVICE"
+          grep -q 'initializeLocalBrain' "$SERVICE"
+          grep -q 'sendMessageAsync' "$SERVICE"
+          grep -q 'runNaturalPhoneAction' "$SERVICE"
+          grep -q 'queueSmsFromModel' "$SERVICE"
+          grep -q 'setAlarmForModel' "$SERVICE"
+          grep -q 'setScreenBrightnessForModel' "$SERVICE"
+          grep -q 'requestWhatsAppMessage' "$TOOLS"
+          grep -q 'requestSmsMessage' "$TOOLS"
+          grep -q 'informale' "$PARSER"
           if grep -R -n -E 'OwnerVoiceVerifier|VoiceSetupActivity|verifiedVoice' "$PROJECT/app/src/main/java"; then
             echo "ERROR: speaker biometrics remain in the generated Android sources."
             exit 1
@@ -88,11 +103,13 @@ jobs:
           test -d "$RUNNER_TEMP/vosk-model-small-es-0.42"
           mkdir -p "$JARVIS_PROJECT/app/src/main/assets"
           mv "$RUNNER_TEMP/vosk-model-small-es-0.42" "$JARVIS_PROJECT/app/src/main/assets/model-es"
+          test -f "$JARVIS_PROJECT/app/src/main/assets/model-es/conf/model.conf"
+          test -f "$JARVIS_PROJECT/app/src/main/assets/model-es/am/final.mdl"
 
-      - name: Instalar Gradle 8.7
+      - name: Instalar Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.7'
+          gradle-version: '8.13'
 
       - name: Compilar APK de depuración
         shell: bash
