@@ -16,6 +16,12 @@ service = service.replace(
     ""
 )
 
+# Permit longer spoken phrases; recognition stops early as soon as Vosk detects an endpoint.
+if "started < 8_000" in service:
+    service = service.replace("started < 8_000", "started < 20_000", 1)
+elif "started < 20_000" not in service:
+    raise SystemExit("No se encontró el límite de escucha del reconocedor local.")
+
 conversation = r'''    /** Conversación continua de voz: ASR local para entender y TTS para responder. */
     private suspend fun conversation() {
         updateNotification("Escuchando en local")
