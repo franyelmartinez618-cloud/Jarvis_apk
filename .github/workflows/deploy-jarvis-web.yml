@@ -22,7 +22,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-      - name: Validate web application
+      - name: Versionar recursos para forzar actualización de caché
+        env:
+          BUILD_ID: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          build = os.environ["BUILD_ID"][:12]
+          app = Path("web/app.js")
+          text = app.read_text(encoding="utf-8")
+          text, count = re.subn(r'const BUILD="[^"]+"', f'const BUILD="web-{build}"', text, count=1)
+          if count != 1:
+              raise SystemExit("No se encontró el identificador de build en web/app.js")
+          app.write_text(text, encoding="utf-8")
+          sw = Path("web/sw.js")
+          text = sw.read_text(encoding="utf-8")
+          text, count = re.subn(r'const CACHE="[^"]+"', f'const CACHE="jarvis-web-shell-{build}"', text, count=1)
+          if count != 1:
+              raise SystemExit("No se encontró el identificador de caché en web/sw.js")
+          sw.write_text(text, encoding="utf-8")
+          PY
+      - name: Validar aplicación web
         run: |
           set -euo pipefail
           test -s web/index.html
