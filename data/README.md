@@ -1,0 +1,2 @@
+# JARVIS training data
+Coloca el corpus autorizado en raw/ (no se versiona). Formatos: TXT, Markdown o JSONL con campo text. Registra cada fuente, autor, URL, licencia y fecha en sources.jsonl. No incluyas datos personales privados, credenciales ni contenido sin permiso de entrenamiento. El entrenamiento no descargará corpus automáticamente.
