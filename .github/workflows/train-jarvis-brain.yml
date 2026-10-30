@@ -10,7 +10,9 @@ on:
       - "brain/train.py"
       - "brain/train_sft.py"
       - "brain/prepare_corpus.py"
+      - "brain/prepare_oasst1.py"
       - "brain/generate_curriculum.py"
+      - "brain/tests/**"
       - "brain/export_android.py"
       - "brain/evaluate.py"
       - "brain/config*.json"
@@ -51,10 +53,29 @@ jobs:
       - name: Generar ejercicios originales de razonamiento
         run: python brain/generate_curriculum.py --output data/seed/zz_generated_curriculum.jsonl --count 300
 
-      - name: Construir corpus original JARVIS
+      - name: Descargar corpus de conversaciones humanas OASST1
+        shell: bash
         run: |
-          python brain/prepare_corpus.py --input data/seed --output data/processed/corpus.txt
-          python -c "from pathlib import Path; p=Path('data/processed/corpus.txt'); print(f'Corpus JARVIS: {p.stat().st_size:,} bytes'); assert p.stat().st_size >= 768"
+          set -euo pipefail
+          mkdir -p data/raw
+          curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 \\
+            "https://huggingface.co/datasets/OpenAssistant/oasst1/resolve/main/2023-04-12_oasst_ready.messages.jsonl.gz" \\
+            --output "$RUNNER_TEMP/oasst1-ready.messages.jsonl.gz"
+          curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 \\
+            "https://huggingface.co/datasets/OpenAssistant/oasst1/resolve/main/LICENSE" \\
+            --output data/raw/OASST-LICENSE
+          python brain/prepare_oasst1.py \\
+            --input "$RUNNER_TEMP/oasst1-ready.messages.jsonl.gz" \\
+            --output data/raw/oasst_es_human.jsonl \\
+            --license-file data/raw/OASST-LICENSE \\
+            --registry data/raw/SOURCES.json \\
+            --min-pairs 500
+
+      - name: Construir corpus original y autorizado de JARVIS
+        run: |
+          python brain/prepare_corpus.py --input data/seed --extra-input data/raw --output data/processed/corpus.txt
+          python -c "from pathlib import Path; p=Path('data/processed/corpus.txt'); print(f'Corpus JARVIS: {p.stat().st_size:,} bytes'); assert p.stat().st_size >= 1000000"
+          python -c "import json; m=json.load(open('data/processed/corpus.manifest.json', encoding='utf-8')); print(f'Documentos: {len(m):,}; fuentes: {sorted(set(x[\"source\"] for x in m))}')"
 
       - name: Entrenar Transformer desde inicialización aleatoria
         run: |
@@ -62,7 +83,7 @@ jobs:
 
       - name: Ajustar el modelo a instrucciones de JARVIS
         run: |
-          python brain/train_sft.py --checkpoint checkpoints/jarvis.pt --data data/seed --config brain/sft-config.json --out checkpoints/jarvis-sft.pt
+          python brain/train_sft.py --checkpoint checkpoints/jarvis.pt --data data/seed --extra-data data/raw --config brain/sft-config.json --out checkpoints/jarvis-sft.pt
 
       - name: Evaluar respuestas fuera del corpus de entrenamiento
         run: |
@@ -99,6 +120,9 @@ jobs:
             checkpoints/jarvis-sft.pt
             checkpoints/jarvis-sft-last.pt
             reports/jarvis-quality.json
+            data/processed/corpus.manifest.json
+            data/raw/SOURCES.json
+            data/raw/OASST-LICENSE
             brain/artifacts/jarvis-brain.bin
             brain/artifacts/jarvis-brain.json
           if-no-files-found: warn

@@ -7,7 +7,7 @@ from pathlib import Path
 
 EXTS = {".txt", ".md", ".jsonl"}
 TRAINING_LICENSES = {
-    "CC0-1.0", "Public-Domain", "CC-BY-4.0", "Owner-Created", "Permission-Granted"
+    "CC0-1.0", "Public-Domain", "CC-BY-4.0", "Apache-2.0", "Owner-Created", "Permission-Granted"
 }
 
 
@@ -66,6 +66,13 @@ def provenance_for(path: Path, source: Path, registry):
         raise SystemExit(f"La fuente {relative} requiere enlace o evidencia de permiso.")
     if license_name == "Public-Domain" and not entry.get("public_domain_basis"):
         raise SystemExit(f"La fuente {relative} requiere justificar dominio público.")
+    license_text_file = entry.get("license_text_file")
+    if license_name == "Apache-2.0":
+        if not license_text_file or not (source / license_text_file).is_file():
+            raise SystemExit(f"La fuente {relative} requiere conservar el texto de Apache-2.0.")
+        license_content = (source / license_text_file).read_text(encoding="utf-8", errors="replace")
+        if "Apache License" not in license_content or "Version 2.0" not in license_content:
+            raise SystemExit(f"El archivo de licencia de {relative} no parece Apache-2.0.")
     return {
         "source": entry.get("source", ""),
         "url": entry.get("url", ""),
@@ -75,39 +82,44 @@ def provenance_for(path: Path, source: Path, registry):
         "attribution": entry.get("attribution", ""),
         "permission_evidence": entry.get("permission_evidence", ""),
         "public_domain_basis": entry.get("public_domain_basis", ""),
+        "license_text_file": license_text_file or "",
     }
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", default="data/raw")
+    parser.add_argument("--extra-input", action="append", default=[])
     parser.add_argument("--output", default="data/processed/corpus.txt")
     args = parser.parse_args()
 
-    source = Path(args.input)
+    sources = [Path(args.input)] + [Path(value) for value in args.extra_input]
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    registry = load_registry(source) if source.exists() else []
     seen = set()
     rows = []
     manifest = []
-    for path in sorted(p for p in source.rglob("*") if p.is_file()) if source.exists() else []:
-        if path.name in {"SOURCES.json", "README.md"} or path.suffix.lower() not in EXTS:
-            continue
-        provenance = provenance_for(path, source, registry)
-        for text in iter_text(path):
-            clean = re.sub(r"\n{3,}", "\n\n", text.replace("\x00", " ")).strip()
-            digest = hashlib.sha256(clean.encode("utf-8")).hexdigest()
-            if len(clean) < 40 or digest in seen:
+    for source in sources:
+        if not source.exists():
+            raise SystemExit(f"No existe el directorio de corpus: {source}")
+        registry = load_registry(source)
+        for path in sorted(p for p in source.rglob("*") if p.is_file()):
+            if path.name in {"SOURCES.json", "README.md"} or path.suffix.lower() not in EXTS:
                 continue
-            seen.add(digest)
-            rows.append(clean)
-            manifest.append({
-                "file": path.relative_to(source).as_posix(),
-                "sha256": digest,
-                "characters": len(clean),
-                **provenance,
-            })
+            provenance = provenance_for(path, source, registry)
+            for text in iter_text(path):
+                clean = re.sub(r"\n{3,}", "\n\n", text.replace("\x00", " ")).strip()
+                digest = hashlib.sha256(clean.encode("utf-8")).hexdigest()
+                if len(clean) < 40 or digest in seen:
+                    continue
+                seen.add(digest)
+                rows.append(clean)
+                manifest.append({
+                    "file": f"{source.as_posix()}/{path.relative_to(source).as_posix()}",
+                    "sha256": digest,
+                    "characters": len(clean),
+                    **provenance,
+                })
     if not rows:
         raise SystemExit("No hay textos válidos. Añade fuentes .txt, .md o .jsonl autorizadas.")
     output.write_text("\n\n<|document|>\n\n".join(rows), encoding="utf-8")

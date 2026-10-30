@@ -25,9 +25,11 @@ PROMPT_PREFIXES = (
 def augment_training_prompts(examples):
     """Create varied user phrasings without leaking variants into validation."""
     expanded = []
-    for question, answer, source in examples:
-        expanded.append((question, answer, source))
-        expanded.extend((prefix + question, answer, source) for prefix in PROMPT_PREFIXES)
+    for example in examples:
+        question, answer, source = example[:3]
+        metadata = tuple(example[3:])
+        expanded.append((question, answer, source, *metadata))
+        expanded.extend((prefix + question, answer, source, *metadata) for prefix in PROMPT_PREFIXES)
     return expanded
 
 
@@ -36,7 +38,7 @@ def load_pairs(root: Path, include_generated: bool = False):
     for path in sorted(root.rglob("*.jsonl")):
         if not include_generated and path.name == "zz_generated_curriculum.jsonl":
             continue
-        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        for line_index, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines()):
             try:
                 record = json.loads(line)
             except json.JSONDecodeError:
@@ -49,7 +51,8 @@ def load_pairs(root: Path, include_generated: bool = False):
                 continue
             question, answer = match.group(1).strip(), match.group(2).strip()
             if question and answer:
-                examples.append((question, answer, str(path)))
+                group_id = str(record.get("group_id") or f"{path.as_posix()}:{line_index}")
+                examples.append((question, answer, str(path), group_id))
     if len(examples) < 10:
         raise SystemExit(f"Se necesitan al menos 10 pares instrucción-respuesta; encontrados {len(examples)}.")
     return examples
@@ -82,6 +85,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--data", default="data/seed")
+    parser.add_argument("--extra-data", action="append", default=[])
     parser.add_argument("--config", default="brain/sft-config.json")
     parser.add_argument("--out", default="checkpoints/jarvis-sft.pt")
     parser.add_argument(
@@ -99,14 +103,21 @@ def main():
     context = int(model_config["context"])
     tokenizer = ByteTokenizer()
     raw_examples = load_pairs(Path(args.data), include_generated=args.include_generated)
+    for extra_root in args.extra_data:
+        raw_examples.extend(load_pairs(Path(extra_root), include_generated=args.include_generated))
     random.Random(int(config.get("seed", 20261030))).shuffle(raw_examples)
-    validation_count = max(1, round(len(raw_examples) * 0.10))
-    validation_raw = raw_examples[:validation_count]
-    train_raw = raw_examples[validation_count:]
+    group_ids = list(dict.fromkeys(example[3] for example in raw_examples))
+    random.Random(int(config.get("seed", 20261030))).shuffle(group_ids)
+    validation_group_count = max(1, round(len(group_ids) * 0.10))
+    validation_groups = set(group_ids[:validation_group_count])
+    validation_raw = [example for example in raw_examples if example[3] in validation_groups]
+    train_raw = [example for example in raw_examples if example[3] not in validation_groups]
+    if not train_raw or not validation_raw:
+        raise SystemExit("La división por conversación dejó un conjunto vacío.")
     base_train_count = len(train_raw)
     train_raw = augment_training_prompts(train_raw)
     train_examples = [encode_pair(q, a, tokenizer, context) for q, a, _ in train_raw]
-    validation_examples = [encode_pair(q, a, tokenizer, context) for q, a, _ in validation_raw]
+    validation_examples = [encode_pair(q, a, tokenizer, context) for q, a, *_ in validation_raw]
 
     seed = int(config.get("seed", 20261030))
     random.seed(seed)
@@ -132,6 +143,7 @@ def main():
     warmup = int(config.get("warmup_steps", max(1, steps // 20)))
     min_lr = float(config.get("min_learning_rate", config["learning_rate"] * 0.1))
     log_every = int(config.get("log_every", 100))
+    max_eval_batches = max(1, int(config.get("max_eval_batches", 64)))
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)
     last_output = output.with_name(output.stem + "-last" + output.suffix)
@@ -148,8 +160,9 @@ def main():
     def evaluate():
         model.eval()
         losses = []
-        for start in range(0, len(validation_examples), batch_size):
-            x, y = batch(validation_examples[start:start + batch_size] or validation_examples)
+        eval_steps = min(max_eval_batches, max(1, math.ceil(len(validation_examples) / batch_size)))
+        for _ in range(eval_steps):
+            x, y = batch(validation_examples)
             with torch.autocast("cuda", dtype=dtype, enabled=device == "cuda"):
                 _, loss = model(x, y)
             losses.append(float(loss.item()))
@@ -160,8 +173,8 @@ def main():
     print(
         f"JARVIS SFT | device={device} | params={parameter_count:,} | "
         f"train_pairs={len(train_examples)} (from {base_train_count} authored pairs) | "
-        f"validation_pairs={len(validation_examples)} | "
-        f"synthetic_examples={'included' if args.include_generated else 'excluded'}",
+        f"validation_pairs={len(validation_examples)} | conversation_groups={len(group_ids)} | "
+        f"extra_sources={len(args.extra_data)} | synthetic_examples={'included' if args.include_generated else 'excluded'}",
         flush=True,
     )
     started = time.time()
@@ -212,6 +225,8 @@ def main():
             "training_seed": seed,
             "source_checkpoint": str(args.checkpoint),
             "training_examples": len(train_examples),
+            "training_conversation_groups": len(group_ids) - validation_group_count,
+            "validation_conversation_groups": validation_group_count,
         }
         torch.save(state, last_output)
         if val_loss < best_loss:

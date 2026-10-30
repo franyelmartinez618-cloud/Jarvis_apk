@@ -33,6 +33,27 @@ class CorpusProvenanceTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             provenance_for(source / "book.txt", source, [item])
 
+    def test_apache_source_requires_license_copy_and_is_accepted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            (source / "LICENSE").write_text("Apache License\nVersion 2.0", encoding="utf-8")
+            item = {
+                "file": "oasst_es_human.jsonl",
+                "source": "OpenAssistant OASST1",
+                "license": "Apache-2.0",
+                "training_allowed": True,
+                "commercial_use": True,
+                "attribution": "OpenAssistant contributors, OASST1",
+                "license_text_file": "LICENSE",
+            }
+            provenance = provenance_for(source / item["file"], source, [item])
+            self.assertEqual(provenance["license"], "Apache-2.0")
+        with self.assertRaises(SystemExit):
+            provenance_for(Path("data/raw/no-copy.jsonl"), Path("data/raw"), [{
+                "file": "no-copy.jsonl", "license": "Apache-2.0",
+                "training_allowed": True, "commercial_use": True,
+            }])
+
     def test_cc_by_requires_attribution(self):
         source = Path("data/raw")
         item = {
