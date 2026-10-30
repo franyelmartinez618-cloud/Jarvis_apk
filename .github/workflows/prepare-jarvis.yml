@@ -7,6 +7,8 @@ on:
       - "web/**"
       - ".github/workflows/deploy-jarvis-web.yml"
       - "README.md"
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
