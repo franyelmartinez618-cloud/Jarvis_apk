@@ -64,6 +64,17 @@ jobs:
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis.py" "$PROJECT"
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_updates.py" "$PROJECT"
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_voice_unlock.py" "$PROJECT"
+          MANIFEST="$PROJECT/app/src/main/AndroidManifest.xml"
+          SERVICE="$PROJECT/app/src/main/java/com/jarvis/personal/JarvisService.kt"
+          grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST"
+          grep -q 'AudioRecord' "$SERVICE"
+          grep -q 'Recognizer' "$SERVICE"
+          grep -q 'speak(' "$SERVICE"
+          if grep -R -n -E 'OwnerVoiceVerifier|VoiceSetupActivity|verifiedVoice' "$PROJECT/app/src/main/java"; then
+            echo "ERROR: speaker biometrics remain in the generated Android sources."
+            exit 1
+          fi
+          grep -q 'text.contains("jarvis")' "$PROJECT/app/src/main/java/com/jarvis/personal/WakeWordListener.kt"
           echo "JARVIS_PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
       - name: Descargar modelo de español para activación offline
