@@ -163,6 +163,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
-          path: output/app-debug.apk
+          path: |
+            output/app-debug.apk
+            output/jarvis.apk
           if-no-files-found: error
           retention-days: 7
