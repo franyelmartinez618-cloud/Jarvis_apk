@@ -92,6 +92,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.JsResult
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -126,7 +127,26 @@ class MainActivity : Activity() {
             settings.allowUniversalAccessFromFileURLs = false
             settings.javaScriptCanOpenWindowsAutomatically = false
             settings.setSupportMultipleWindows(false)
-            webChromeClient = WebChromeClient()
+            webChromeClient = object : WebChromeClient() {
+                override fun onJsConfirm(
+                    view: WebView?,
+                    url: String?,
+                    message: String?,
+                    result: JsResult?
+                ): Boolean {
+                    if (isFinishing) {
+                        result?.cancel()
+                        return true
+                    }
+                    AlertDialog.Builder(this@MainActivity)
+                        .setMessage(message.orEmpty())
+                        .setPositiveButton("Confirmar") { _, _ -> result?.confirm() }
+                        .setNegativeButton("Cancelar") { _, _ -> result?.cancel() }
+                        .setOnCancelListener { result?.cancel() }
+                        .show()
+                    return true
+                }
+            }
             addJavascriptInterface(JarvisWebBridge(this@MainActivity), "JarvisNative")
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
