@@ -51,6 +51,10 @@ jobs:
         run: |
           python brain/train_sft.py --checkpoint checkpoints/jarvis.pt --data data/seed --config brain/sft-config.json --out checkpoints/jarvis-sft.pt
 
+      - name: Evaluar respuestas fuera del corpus de entrenamiento
+        run: |
+          python brain/evaluate.py --checkpoint checkpoints/jarvis-sft.pt --questions brain/eval/questions.jsonl --output reports/jarvis-quality.json --max-tokens 96
+
       - name: Exportar checkpoint ajustado al formato JARVIS01
         run: |
           python brain/export_android.py --checkpoint checkpoints/jarvis-sft.pt --output brain/artifacts/jarvis-brain.bin
@@ -66,6 +70,7 @@ jobs:
             checkpoints/jarvis.metrics.jsonl
             checkpoints/jarvis-sft.pt
             checkpoints/jarvis-sft-last.pt
+            reports/jarvis-quality.json
             brain/artifacts/jarvis-brain.bin
             brain/artifacts/jarvis-brain.json
           if-no-files-found: error
