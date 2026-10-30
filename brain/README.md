@@ -69,3 +69,13 @@ El workflow GPU es manual y exige que el corpus autorizado alcance el tamaño m�
 ## Segunda etapa: ajuste a instrucciones
 
 Después del preentrenamiento autoregresivo, `train_sft.py` realiza ajuste supervisado con pares `### Usuario:` / `### JARVIS:`. La pérdida se calcula sobre la respuesta del asistente y el token EOS; el texto de la pregunta queda enmascarado como objetivo. Esto enseña formato de conversación y seguimiento de instrucciones, pero la calidad sigue limitada por el tamaño y diversidad del conjunto de ejemplos. El workflow exporta el checkpoint SFT, no el checkpoint base.
+
+
+
+## Currículo algorítmico reproducible
+
+Antes del entrenamiento, Actions genera 3.000 ejercicios originales con respuestas verificables por cálculo determinista: operaciones con enteros, porcentajes, ecuaciones lineales, fracciones, medias, primalidad y ordenamiento. El generador usa una semilla fija, no descarga datos ni llama a modelos o APIs, y produce un archivo ignorado por Git que se reconstruye en cada ejecución. Esto enseña patrones matemáticos básicos; no sustituye un corpus de lenguaje y conocimiento general de gran escala.
+
+## Evaluación externa al entrenamiento
+
+`brain/evaluate.py` prueba 12 preguntas que no forman parte del currículo de entrenamiento y registra respuestas, cobertura de términos, repetición y longitud. Es una prueba heurística inicial, no una certificación factual. El checkpoint se conserva como experimental aunque no supere la prueba; no se instala automáticamente en Android.
