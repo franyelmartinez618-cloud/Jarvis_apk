@@ -37,3 +37,7 @@ Tras entrenar y evaluar un checkpoint, vuelve a compilar Android. El runtime ver
 ## Voz
 
 La transcripción de voz es un componente separado del razonamiento. El reconocedor del APK convierte audio en texto. La síntesis de voz también es independiente: Android usa el motor TTS disponible y debe seleccionar una voz en-GB adecuada si el dispositivo la ofrece.
+
+
+## Resultado del primer experimento
+El entrenamiento del 30-10-2026 produjo un checkpoint propio (2.500 pasos, val_loss 1.7612) y lo exportó correctamente. En tres preguntas de prueba la generación fue incoherente y repetitiva. No se debe copiar ese binario a `brain/artifacts/` ni distribuirlo en la APK hasta mejorar corpus, tokenizer y capacidad y aprobar una evaluación. Consulta `EXPERIMENT_2026-10-30.md`.
