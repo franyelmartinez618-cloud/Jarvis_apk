@@ -1,7 +1,6 @@
 package com.jarvis.personal
 
 import android.content.Context
-import java.io.ByteArrayInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.Normalizer
@@ -93,6 +92,7 @@ internal class JarvisNativeBrain(context: Context) {
 private class NativeTransformer(bytes: ByteArray) {
     private val context: Int
     private val width: Int
+    private val heads: Int
     private val layers: List<Layer>
     private val tokenEmbedding: FloatArray
     private val positionEmbedding: FloatArray
@@ -116,8 +116,8 @@ private class NativeTransformer(bytes: ByteArray) {
         context = input.int
         width = input.int
         val count = input.int
-        val heads = input.int
-        require(vocab == 260 && context in 32..1024 && width in 32..512 && count in 1..12 && width % heads == 0)
+        heads = input.int
+        require(vocab == 260 && context in 32..1024 && width in 32..512 && count in 1..12 && heads in 1..16 && width % heads == 0)
         tokenEmbedding = readFloats(input, vocab * width)
         positionEmbedding = readFloats(input, context * width)
         layers = (0 until count).map {
@@ -137,9 +137,9 @@ private class NativeTransformer(bytes: ByteArray) {
     fun generate(prompt: String, maxTokens: Int): String {
         val ids = prompt.toByteArray(Charsets.UTF_8).map { it.toInt() and 0xff }.toMutableList()
         val initialSize = ids.size
-        repeat(maxTokens.coerceIn(1, 256)) {
+        for (step in 0 until maxTokens.coerceIn(1, 256)) {
             val token = next(ids)
-            if (token == 257 || token == 258) return@repeat
+            if (token == 257 || token == 258) break
             ids.add(token)
         }
         val generated = ids.drop(initialSize).filter { it in 0..255 }.map { it.toByte() }.toByteArray()
@@ -157,7 +157,7 @@ private class NativeTransformer(bytes: ByteArray) {
         layers.forEach { layer ->
             val norm1 = layerNorm(x, layer.n1w, layer.n1b)
             val qkv = linear(norm1, layer.qkvw, null, width * 3)
-            val attended = attention(qkv, length, width, 4)
+            val attended = attention(qkv, length, width, heads)
             val projected = linear(attended, layer.projw, null, width)
             x = add(x, projected)
             val norm2 = layerNorm(x, layer.n2w, layer.n2b)
