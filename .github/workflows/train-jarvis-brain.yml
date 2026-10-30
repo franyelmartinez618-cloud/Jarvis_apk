@@ -58,17 +58,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p data/raw
-          curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 \\
-            "https://huggingface.co/datasets/OpenAssistant/oasst1/resolve/main/2023-04-12_oasst_ready.messages.jsonl.gz" \\
+          curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 \
+            "https://huggingface.co/datasets/OpenAssistant/oasst1/resolve/main/2023-04-12_oasst_ready.messages.jsonl.gz" \
             --output "$RUNNER_TEMP/oasst1-ready.messages.jsonl.gz"
-          curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 \\
-            "https://huggingface.co/datasets/OpenAssistant/oasst1/resolve/main/LICENSE" \\
+          curl --fail --location --retry 5 --retry-all-errors --retry-delay 3 \
+            "https://huggingface.co/datasets/OpenAssistant/oasst1/resolve/main/LICENSE" \
             --output data/raw/OASST-LICENSE
-          python brain/prepare_oasst1.py \\
-            --input "$RUNNER_TEMP/oasst1-ready.messages.jsonl.gz" \\
-            --output data/raw/oasst_es_human.jsonl \\
-            --license-file data/raw/OASST-LICENSE \\
-            --registry data/raw/SOURCES.json \\
+          python brain/prepare_oasst1.py \
+            --input "$RUNNER_TEMP/oasst1-ready.messages.jsonl.gz" \
+            --output data/raw/oasst_es_human.jsonl \
+            --license-file data/raw/OASST-LICENSE \
+            --registry data/raw/SOURCES.json \
             --min-pairs 500
 
       - name: Construir corpus original y autorizado de JARVIS
