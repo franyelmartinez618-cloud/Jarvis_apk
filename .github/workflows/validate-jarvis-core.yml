@@ -8,6 +8,9 @@ on:
       - "brain/**"
       - "data/seed/**"
       - "scripts/prepare_jarvis_native_brain.py"
+      - "scripts/prepare_jarvis_local_brain.py"
+      - "scripts/prepare_jarvis_voice_unlock.py"
+      - "brain/tests/**"
       - ".github/workflows/prepare-jarvis.yml"
       - "web/**"
       - ".github/workflows/validate-jarvis-core.yml"
@@ -25,7 +28,7 @@ jobs:
       - name: Syntax-check Python
         run: python -m compileall -q brain
       - name: Compile generated Android patcher
-        run: python -m py_compile scripts/prepare_jarvis_native_brain.py
+        run: python -m py_compile scripts/prepare_jarvis_native_brain.py scripts/prepare_jarvis_local_brain.py scripts/prepare_jarvis_voice_unlock.py
       - name: Prepare the project seed corpus
         run: |
           python brain/prepare_corpus.py --input data/seed --output "$RUNNER_TEMP/jarvis-seed.txt"
