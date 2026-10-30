@@ -52,9 +52,9 @@ internal class JarvisNativeBrain(context: Context) {
     private data class Note(val terms: Set<String>, val answer: String)
 
     private val notes = listOf(
-        Note(setOf("quien", "eres", "jarvis", "identidad"), "Soy JARVIS, el asistente personal de este teléfono. Mi motor conversacional propio está siendo construido y entrenado desde inicialización aleatoria; no utilizo Qwen ni otro modelo de lenguaje de terceros."),
+        Note(setOf("quien", "eres", "jarvis", "identidad"), "Soy JARVIS, el asistente personal de este teléfono. Mi motor conversacional propio está siendo construido y entrenado desde inicialización aleatoria; no utilizo modelos de lenguaje de terceros."),
         Note(setOf("como", "funcionas", "motor", "cerebro", "modelo", "entrenamiento"), "Mi arquitectura neuronal propia está implementada en este proyecto. El código y los pesos iniciales son nuestros. Todavía falta reunir un corpus amplio y lícito, entrenar el checkpoint y evaluarlo antes de afirmar que tengo conocimiento general."),
-        Note(setOf("qwen", "llama", "gemma", "chatgpt", "terceros", "externo"), "El motor de conversación de JARVIS no descarga ni ejecuta Qwen, Llama, Gemma, ChatGPT ni otro modelo lingüístico externo. El reconocimiento de voz se mantiene separado del razonamiento: solo convierte audio en texto."),
+        Note(setOf("llama", "gemma", "chatgpt", "terceros", "externo"), "El motor de conversación de JARVIS no descarga ni ejecuta modelos lingüísticos externos. El reconocimiento de voz se mantiene separado del razonamiento: solo convierte audio en texto."),
         Note(setOf("que", "puedes", "hacer", "capacidades", "funciones", "ayuda"), "Puedo ejecutar las funciones Android que están implementadas: abrir aplicaciones instaladas, abrir cámara, controlar linterna, configurar alarmas y temporizadores, abrir mapas o búsquedas web y ajustar algunos controles del teléfono. Las funciones sensibles o protegidas dependen de permisos de Android y confirmación."),
         Note(setOf("abrir", "aplicacion", "app", "telefono"), "Puedo buscar y abrir aplicaciones que Android muestre en el lanzador. Di, por ejemplo: «abre WhatsApp» o «abre YouTube»."),
         Note(setOf("alarma", "despertador", "hora"), "Puedo abrir el reloj de Android con una alarma preparada. Debes revisar la hora y guardar la alarma en la aplicación del reloj."),
