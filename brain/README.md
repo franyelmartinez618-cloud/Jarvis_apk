@@ -63,3 +63,9 @@ No se incorporan automáticamente textos de OpenStax porque su licencia actual C
 El workflow `.github/workflows/train-jarvis-brain-gpu.yml` está preparado para una máquina Linux con GPU NVIDIA registrada como runner propio de GitHub Actions con etiquetas `self-hosted, linux, x64, gpu`. El entorno de esta sesión y los runners estándar de GitHub disponibles aquí no proporcionan GPU CUDA. No se puede ejecutar honestamente el perfil de 12 capas en un runner CPU pequeño ni afirmar que ya se entrenó a escala grande.
 
 El workflow GPU es manual y exige que el corpus autorizado alcance el tamaño mínimo. Los checkpoints se conservan como artefactos separados y no se integran automáticamente en la APK. Primero deben pasar evaluación cualitativa, validación de seguridad y pruebas de rendimiento en Android.
+
+
+
+## Segunda etapa: ajuste a instrucciones
+
+Después del preentrenamiento autoregresivo, `train_sft.py` realiza ajuste supervisado con pares `### Usuario:` / `### JARVIS:`. La pérdida se calcula sobre la respuesta del asistente y el token EOS; el texto de la pregunta queda enmascarado como objetivo. Esto enseña formato de conversación y seguimiento de instrucciones, pero la calidad sigue limitada por el tamaño y diversidad del conjunto de ejemplos. El workflow exporta el checkpoint SFT, no el checkpoint base.
