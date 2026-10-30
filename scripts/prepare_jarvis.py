@@ -94,33 +94,74 @@ open_app = r'''    private suspend fun doOpenApp(name: String) {
         val q = strip(name).trim().removePrefix("la app ").removePrefix("aplicacion de ").trim()
         if (q.isBlank()) { speak("Dime qué aplicación quieres abrir."); return }
         val activities = pm.queryIntentActivities(launcher, 0)
-        val match = activities.sortedBy { info ->
-            val label = strip(info.loadLabel(pm).toString()).trim()
-            when {
-                label == q -> 0
-                label.startsWith(q) -> 1
-                label.contains(q) -> 2
-                q.contains(label) -> 3
-                else -> 10
+        val aliases = mapOf(
+            "cod" to listOf("call of duty", "call of duty mobile"),
+            "call of duty" to listOf("call of duty mobile"),
+            "free fair" to listOf("free fire", "free fire max"),
+            "free fire" to listOf("free fire max"),
+            "brawl star" to listOf("brawl stars")
+        )
+        val candidates = mutableListOf(q)
+        aliases.forEach { (key, values) ->
+            if (q == key || values.any { it == q }) {
+                candidates.addAll(values)
+                candidates.add(key)
             }
-        }.firstOrNull { info ->
-            val label = strip(info.loadLabel(pm).toString()).trim()
-            label == q || label.startsWith(q) || label.contains(q) || q.contains(label)
         }
+        fun editDistance(a: String, b: String): Int {
+            var previous = IntArray(b.length + 1) { it }
+            for (i in a.indices) {
+                val current = IntArray(b.length + 1)
+                current[0] = i + 1
+                for (j in b.indices) {
+                    val cost = if (a[i] == b[j]) 0 else 1
+                    current[j + 1] = minOf(
+                        current[j] + 1,
+                        previous[j + 1] + 1,
+                        previous[j] + cost
+                    )
+                }
+                previous = current
+            }
+            return previous[b.length]
+        }
+        val match = activities.mapNotNull { info ->
+            val label = strip(info.loadLabel(pm).toString()).trim()
+            val labelFlat = label.replace(" ", "")
+            var score = 0
+            for (candidate in candidates) {
+                val candidateFlat = candidate.replace(" ", "")
+                val candidateScore = when {
+                    label == candidate -> 120
+                    label.startsWith(candidate) -> 110
+                    label.contains(candidate) -> 105
+                    candidate.contains(label) -> 95
+                    labelFlat == candidateFlat -> 120
+                    else -> {
+                        val distance = editDistance(candidateFlat, labelFlat)
+                        val tolerance = if (candidateFlat.length <= 8) 2 else 3
+                        if (distance <= tolerance) 80 - distance * 10 else 0
+                    }
+                }
+                score = maxOf(score, candidateScore)
+            }
+            if (score == 0) null else info to score
+        }.maxByOrNull { it.second }?.first
+
         if (match == null) {
-            speak("No encontré una aplicación llamada " + name + ". Usa el nombre que aparece debajo de su icono.")
+            speak("No encontré " + name + " en las aplicaciones instaladas. Dime el nombre otra vez o abre la lista de aplicaciones.")
             return
         }
-        // Android limita abrir actividades desde un servicio en segundo plano.
+        // Android limits opening activities from a foreground service on some versions.
         if (!Settings.canDrawOverlays(this)) {
-            speak("Para abrir aplicaciones por voz con Jarvis en segundo plano, Android exige activar Mostrar sobre otras apps en los permisos.")
+            speak("Android puede bloquear la apertura de aplicaciones desde segundo plano. Activa Mostrar sobre otras apps en los permisos de Jarvis.")
             return
         }
         val intent = pm.getLaunchIntentForPackage(match.activityInfo.packageName)
         if (intent == null) { speak("Android no ofrece un acceso directo para abrir " + name + "."); return }
         try {
             startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            speak("Abriendo " + match.loadLabel(pm) + ".")
+            speak("Sí, señor. Abriendo " + match.loadLabel(pm) + ".")
         } catch (e: Exception) {
             Log.e(TAG, "abrir app falló", e)
             speak("Android bloqueó la apertura de " + name + ". Abre Jarvis en pantalla y vuelve a intentarlo.")
@@ -209,6 +250,8 @@ voice_and_ai = r'''    /** Reconoce las órdenes directamente con Vosk y el mode
     private fun localReply(text: String): String {
         return when {
             text.isBlank() -> "Te escucho. Dime qué necesitas."
+            Regex("\\b(jarvis estas ahi|estas ahi|jarvis estas despierto|estas despierto|jarvis estas activo|estas activo|jarvis me escuchas|me escuchas)\\b").containsMatchIn(text) ->
+                "Sí, señor. Estoy aquí, activo y escuchándote. ¿Qué necesitas?"
             Regex("\\b(hola|buenas|buenos dias|buenas tardes|buenas noches)\\b").containsMatchIn(text) ->
                 "Hola. Soy Jarvis. Estoy trabajando localmente en este teléfono. ¿Qué hacemos?"
             Regex("\\b(como estas|que tal estas|estas bien)\\b").containsMatchIn(text) ->
@@ -217,8 +260,8 @@ voice_and_ai = r'''    /** Reconoce las órdenes directamente con Vosk y el mode
                 "Soy Jarvis, tu asistente local. No envío tu conversación a una IA remota. Ejecuto las habilidades instaladas en esta aplicación."
             Regex("\\b(ayuda|que puedes hacer|que sabes hacer|comandos)\\b").containsMatchIn(text) ->
                 "Puedo abrir aplicaciones, decir la hora y la fecha, buscar contactos, preparar mensajes y llamadas con confirmación, y controlar elementos visibles si activas Accesibilidad."
-            Regex("\\b(estas escuchando|jarvis estas activo|estas activo)\\b").containsMatchIn(text) ->
-                "Sí. Estoy activo en este dispositivo."
+            Regex("\\b(estas escuchando|estas activo|jarvis estas activo)\\b").containsMatchIn(text) ->
+                "Sí, señor. Estoy activo y listo para ayudarte."
             Regex("\\b(privacidad|internet|conectado a una ia|ia remota|gemini|qwen)\\b").containsMatchIn(text) ->
                 "No uso Gemini ni otro servicio de inteligencia artificial remoto. La voz se reconoce localmente; las actualizaciones de la aplicación solo consultan GitHub."
             Regex("\\b(gracias|muchas gracias)\\b").containsMatchIn(text) ->

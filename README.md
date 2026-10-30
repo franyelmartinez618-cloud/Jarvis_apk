@@ -1,76 +1,51 @@
-# Jarvis — asistente personal Android
+# JARVIS — asistente de voz local para Android
 
-Jarvis conserva el mismo paquete Android y repositorio. La aplicación pasa a una arquitectura híbrida: un contenedor Android pequeño y una interfaz web que puede actualizarse sin reemplazar el APK.
+Jarvis conserva el mismo proyecto Android, paquete, repositorio y firma de actualización. La experiencia objetivo vuelve a ser voz a voz: la persona habla, Jarvis entiende el contenido hablado localmente y responde con audio mediante la síntesis de voz de Android.
 
-## Qué cambia en esta versión
+## La corrección de voz de esta versión
 
-- Se elimina el uso del micrófono, el reconocimiento de voz, el registro biométrico de voz y los servicios de escucha en segundo plano.
-- Android ya no solicita permiso de micrófono. El flujo de compilación comprueba que RECORD_AUDIO no aparezca en el manifiesto final.
-- La pantalla principal es un chat de texto, no un menú con varios pasos.
-- La conversación, historial y recuerdos se procesan y guardan localmente en el dispositivo.
-- No se envían mensajes a Gemini, ChatGPT, Qwen, OpenAI ni a otra API conversacional.
-- El control de pantalla es opcional. Solo se activa manualmente en Ajustes > Accesibilidad; no es necesario para conversar.
-- Las acciones de pantalla que pueden enviar, publicar, pagar, comprar o borrar solicitan confirmación.
+- Se conserva el micrófono y el reconocimiento local de español (ASR) porque son necesarios para que Jarvis entienda lo que la persona dice.
+- Se conserva la respuesta hablada (TTS) de Android: Jarvis no responde como chat escrito.
+- Se elimina la verificación biométrica del hablante: ya no se comparan huellas de voz ni se exige grabar dos muestras antes de usar la aplicación.
+- Se amplía el turno de escucha para aceptar frases habladas más largas.
+- Se amplía la gramática de activación con frases como «Hola Jarvis», «Oye Jarvis», «Jarvis, ¿estás ahí?», «Jarvis, ¿estás despierto?», «Jarvis, ¿estás activo?» y «Jarvis, ¿me escuchas?». La detección se activa cuando el reconocedor local encuentra el nombre «Jarvis» en la frase.
+- La pantalla principal conserva un único botón para iniciar o detener el asistente. En la primera instalación, Android solicita los permisos necesarios.
+- Se conservan las capacidades nativas de acciones del teléfono y el control opcional de pantalla por Accesibilidad.
 
-## Actualizaciones sin APK para el chat y la interfaz
+## Diferencia importante: reconocer el habla no es reconocer la identidad
 
-La interfaz vive en la carpeta web y se publica en GitHub Pages mediante el workflow deploy-jarvis-web.yml.
+Jarvis necesita reconocimiento del habla para convertir lo que se dice en texto que sus órdenes puedan interpretar. Eso es ASR y se ejecuta localmente con Vosk y el modelo español incluido en la compilación.
 
-URL web prevista:
+Lo que se elimina es la biometría de voz: identificar si la persona que habla coincide con una huella grabada anteriormente. Esa verificación era adicional, lenta y no es necesaria para conversar con Jarvis.
 
-https://franyelmartinez618-cloud.github.io/Jarvis_apk/
+La respuesta se produce por síntesis de voz (TextToSpeech) en el dispositivo. El motor de voz de Android puede depender de la voz instalada en el teléfono, pero no requiere una API conversacional ni enviar los mensajes a Gemini, ChatGPT u otro servicio de IA.
 
-Después de instalar por primera vez el nuevo contenedor web:
+## Activación y conversación
 
-1. Cada cambio en web/** se publica como página estática desde GitHub Actions.
-2. Jarvis consulta el identificador de versión mientras está abierto y recarga la interfaz cuando detecta un cambio.
-3. El service worker guarda los archivos para que la conversación local siga abriendo cuando no hay conexión.
-4. No se descarga ni instala un APK para cambios de HTML, CSS, JavaScript, respuestas, reglas o habilidades que ya estén disponibles en el puente nativo.
+La app se abre y se pulsa «INICIAR JARVIS». El servicio de primer plano queda escuchando la palabra de activación con el reconocedor local. Cuando detecta «Jarvis», pasa al ciclo de conversación, interpreta las órdenes, ejecuta las habilidades disponibles y responde por voz.
 
-Configuración única de GitHub Pages: en el repositorio abre Settings > Pages y elige GitHub Actions como Source. GitHub Pages solo se puede desplegar cuando esa fuente está habilitada. Después, el workflow publica automáticamente cada cambio web.
+La gramática ampliada acepta varias expresiones que contienen Jarvis. No promete detectar cualquier frase sin la palabra de activación ni garantiza que un modelo acústico pequeño interprete perfectamente todos los acentos, nombres propios o ruidos.
 
-La copia web que viene dentro del APK sirve como respaldo inicial/sin conexión. Cuando hay conexión, la app carga la versión publicada.
+## Qué puede hacer y qué no se debe prometer
 
-## Qué todavía requiere APK
+El código incorpora comandos para abrir aplicaciones, consultar contactos, preparar mensajes o llamadas, controlar la pantalla con Accesibilidad y responder a algunas preguntas comunes. Los mensajes y llamadas deben estar sujetos a permisos, confirmaciones y restricciones de Android.
 
-La web puede actualizar la interfaz, memoria local, reglas conversacionales y uso de funciones nativas que ya estén expuestas por el puente Android. No puede añadir por sí sola permisos nuevos, servicios del sistema, código Kotlin, cambios del manifiesto ni capacidades nativas que aún no existen.
+El motor conversacional actual está basado en intenciones y habilidades programadas para este proyecto. **No es todavía una IA general ni un modelo generativo entrenado desde cero.** Por eso, aunque ahora la interacción vuelve a ser por voz, todavía no puede mantener una conversación abierta con la amplitud de Tony Stark/Jarvis o de un modelo conversacional grande.
 
-Esos cambios siguen necesitando una nueva versión nativa. La aplicación actual se instala desde APK de GitHub, no desde Google Play, por lo que no puede utilizar el mecanismo de actualizaciones de Play hasta que se publique e instale desde Play Store. Google Play ofrece actualizaciones flexibles e inmediatas para aplicaciones distribuidas por esa tienda; el usuario debe tener una instalación elegible de Play. Consulta la documentación oficial de actualizaciones integradas:
-https://developer.android.com/guide/playcore/in-app-updates
+Una IA generativa verdaderamente propia requiere diseñar y entrenar un modelo con datos, recursos de cómputo, pruebas y ajustes. No se consigue quitando una API o cambiando el reconocimiento. No se añade aquí un modelo conversacional de terceros ni se finge que el motor actual tiene esa capacidad.
 
-No se intenta instalar código ejecutable Android desde una web: solo se actualiza la interfaz y lógica JavaScript interpretada en WebView.
+## Actualizaciones
 
-## Conversación local: alcance real
-
-El núcleo inicial de conversación está escrito específicamente para este proyecto, sin pesos ni API de un modelo generativo externo. Incluye interpretación de comandos, respuestas propias, operaciones aritméticas sencillas, contexto de conversación y recuerdos locales. Todavía NO es un modelo generativo general entrenado desde cero y no puede responder con la amplitud de una IA grande. No se debe presentar como AGI ni como un LLM autónomo.
-
-Una IA generativa real entrenada desde cero requiere un corpus de entrenamiento, infraestructura de cómputo, un proceso de evaluación y ciclos de entrenamiento. No se obtiene únicamente cambiando la pantalla ni puede prometerse una calidad equivalente a los modelos grandes con este motor de reglas.
-
-## Acciones disponibles en esta base
-
-- Abrir aplicaciones instaladas por nombre.
-- Leer el texto visible de la pantalla, si se activa Accesibilidad.
-- Pulsar controles visibles y escribir en el campo enfocado, si se activa Accesibilidad.
-- Volver atrás, ir al inicio y desplazarse por una pantalla, si se activa Accesibilidad.
-- Abrir búsquedas web o de YouTube solicitadas por la persona.
-- Abrir el marcador telefónico, sin iniciar una llamada automáticamente.
-- Recordar el nombre y notas que la persona decida guardar. Los recuerdos se quedan en almacenamiento local del dispositivo.
-
-La lectura y control de pantalla pueden exponer contenido privado a la función de Accesibilidad. Actívala solo si realmente necesitas esas acciones y revisa sus permisos en Android.
-
-## Compilación
-
-El proyecto Android base se mantiene en jarvis-android.zip. El flujo de APK:
-
-1. Extrae el proyecto base.
-2. Ejecuta los preparadores de accesibilidad, firma y contenedor web.
-3. Elimina el código fuente de voz legado, los modelos de voz, las bibliotecas nativas de voz y todos los permisos Android que ya no se necesitan.
-4. Compila un APK de depuración y, si está configurada la firma estable, el APK de lanzamiento.
-
-Los cambios solo en web/** no disparan una nueva compilación APK: únicamente publican la interfaz web.
+Las versiones nativas siguen compilándose y firmándose automáticamente con la identidad de firma estable del repositorio. Los cambios de Kotlin, permisos, audio, accesibilidad o capacidades Android requieren una actualización nativa. Android siempre conserva el control del permiso del micrófono y de la instalación de actualizaciones.
 
 ## Privacidad
 
-La conversación y memoria no se envían a un servidor de IA. La conexión de red se utiliza para cargar y actualizar los archivos estáticos de la interfaz; las búsquedas externas solo se abren cuando la persona las solicita. Si se utiliza el control de pantalla, la lectura se procesa localmente en Android y depende de la autorización de Accesibilidad.
+- El reconocimiento de voz se ejecuta localmente en el dispositivo.
+- No se transmiten grabaciones a una API conversacional.
+- No se guardan muestras biométricas de voz.
+- Las búsquedas externas solo se abren cuando la persona las solicita.
+- La lectura y el control de otras aplicaciones requieren habilitar voluntariamente el servicio de Accesibilidad. Esa función puede acceder al contenido visible de la pantalla.
 
-No guardes contraseñas, claves privadas ni secretos en el repositorio.
+## Compilación
+
+El workflow extrae el proyecto base `jarvis-android.zip`, prepara reconocimiento local en español, aplica las habilidades de la app, elimina el verificador biométrico y la pantalla de inscripción de voz, y compila APK de depuración y de lanzamiento firmado.

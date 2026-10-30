@@ -2,11 +2,7 @@ name: Construir APK de Jarvis
 
 on:
   push:
-    branches: [ main ]
-    paths-ignore:
-      - "web/**"
-      - ".github/workflows/deploy-jarvis-web.yml"
-      - "README.md"
+    branches: [ main, "fix/jarvis-voice-to-voice-no-biometric-20261030" ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -41,11 +37,57 @@ jobs:
           PROJECT="$RUNNER_TEMP/jarvis-src/jarvis-android"
           test -f "$PROJECT/settings.gradle.kts"
           test -f "$PROJECT/app/src/main/AndroidManifest.xml"
+          python3 - "$PROJECT" <<'PY'
+          from pathlib import Path
+          import sys
+          root = Path(sys.argv[1])
+
+          # Flexible local wake phrases: a detected "jarvis" token starts conversation.
+          wake = root / "app/src/main/java/com/jarvis/personal/WakeWordListener.kt"
+          text = wake.read_text(encoding="utf-8")
+          lines = text.splitlines()
+          found = False
+          for index, line in enumerate(lines):
+              if "private const val GRAMMAR =" in line:
+                  lines[index] = r'        private const val GRAMMAR = "[\"jarvis\", \"hola jarvis\", \"oye jarvis\", \"ey jarvis\", \"jarvis estas ahi\", \"jarvis estas despierto\", \"jarvis estas activo\", \"jarvis me escuchas\", \"jarvis despierta\", \"jarvis activa\", \"jarvis necesito ayuda\", \"[unk]\"]"'
+                  found = True
+                  break
+          if not found:
+              raise SystemExit("No se encontró la gramática de WakeWordListener.kt")
+          text = "\n".join(lines) + "\n"
+          old = 'if (text.contains("jarvis") && text.contains("activate")) {'
+          if old not in text:
+              raise SystemExit("No se encontró la condición original de despertar Jarvis.")
+          text = text.replace(old, 'if (text.contains("jarvis")) {', 1)
+          wake.write_text(text, encoding="utf-8")
+          PY
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis.py" "$PROJECT"
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_updates.py" "$PROJECT"
-          python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_web_shell.py" "$PROJECT"
-          if grep -q 'android.permission.RECORD_AUDIO' "$PROJECT/app/src/main/AndroidManifest.xml"; then echo "ERROR: microphone permission remains"; exit 1; fi
+          python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_voice_unlock.py" "$PROJECT"
+          MANIFEST="$PROJECT/app/src/main/AndroidManifest.xml"
+          SERVICE="$PROJECT/app/src/main/java/com/jarvis/personal/JarvisService.kt"
+          grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST"
+          grep -q 'AudioRecord' "$SERVICE"
+          grep -q 'Recognizer' "$SERVICE"
+          grep -q 'speak(' "$SERVICE"
+          if grep -R -n -E 'OwnerVoiceVerifier|VoiceSetupActivity|verifiedVoice' "$PROJECT/app/src/main/java"; then
+            echo "ERROR: speaker biometrics remain in the generated Android sources."
+            exit 1
+          fi
+          grep -q 'text.contains("jarvis")' "$PROJECT/app/src/main/java/com/jarvis/personal/WakeWordListener.kt"
           echo "JARVIS_PROJECT=$PROJECT" >> "$GITHUB_ENV"
+
+      - name: Descargar modelo de español para activación offline
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 \
+            https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip \
+            --output "$RUNNER_TEMP/vosk-es.zip"
+          unzip -q "$RUNNER_TEMP/vosk-es.zip" -d "$RUNNER_TEMP"
+          test -d "$RUNNER_TEMP/vosk-model-small-es-0.42"
+          mkdir -p "$JARVIS_PROJECT/app/src/main/assets"
+          mv "$RUNNER_TEMP/vosk-model-small-es-0.42" "$JARVIS_PROJECT/app/src/main/assets/model-es"
 
       - name: Instalar Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
