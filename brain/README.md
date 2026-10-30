@@ -79,3 +79,6 @@ Antes del entrenamiento, Actions genera 3.000 ejercicios originales con respuest
 ## Evaluación externa al entrenamiento
 
 `brain/evaluate.py` prueba 12 preguntas que no forman parte del currículo de entrenamiento y registra respuestas, cobertura de términos, repetición y longitud. Es una prueba heurística inicial, no una certificación factual. El checkpoint se conserva como experimental aunque no supere la prueba; no se instala automáticamente en Android.
+
+
+Consulta [SCALE_TARGET.md](SCALE_TARGET.md) para la escala de parámetros, requisitos de cómputo y los componentes necesarios para acercarse al objetivo JARVIS.
