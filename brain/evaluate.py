@@ -38,7 +38,7 @@ def main():
         generated = []
         with torch.no_grad():
             for _ in range(args.max_tokens):
-                context_ids = torch.tensor([ids[-config["context"]:]], dtype=torch.long)
+                context_ids = torch.tensor([ids[-config["context"]:]], dtype=torch.long, device=device)
                 logits, _ = model(context_ids)
                 next_token = int(logits[0, -1].argmax().item())
                 if next_token in {BOS, EOS, PAD}:
