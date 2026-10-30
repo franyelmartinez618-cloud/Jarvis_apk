@@ -996,6 +996,10 @@ main = main.replace(
 
 permission_methods = r'''    private fun auditRuntimePermissionsAfterUpgrade() {
         if (!setupPrefs.getBoolean("setup_complete", false)) return
+        if (countdownActive) {
+            handler.postDelayed({ auditRuntimePermissionsAfterUpgrade() }, 4000)
+            return
+        }
         val currentVersion = try { packageManager.getPackageInfo(packageName, 0).versionCode }
             catch (_: Exception) { 0 }
         val auditedVersion = setupPrefs.getInt("permissions_audited_version", 0)
@@ -1034,7 +1038,9 @@ permission_methods = r'''    private fun auditRuntimePermissionsAfterUpgrade() {
         } catch (_: Exception) { false }
         val overlayEnabled = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)
         val writeSettingsEnabled = Build.VERSION.SDK_INT < 23 || Settings.System.canWrite(this)
-        if (!accessibilityEnabled || !overlayEnabled || !writeSettingsEnabled) {
+        val powerManager = getSystemService(PowerManager::class.java)
+        val batteryAllowed = Build.VERSION.SDK_INT < 23 || powerManager.isIgnoringBatteryOptimizations(packageName)
+        if (!accessibilityEnabled || !overlayEnabled || !writeSettingsEnabled || !batteryAllowed) {
             AlertDialog.Builder(this)
                 .setTitle("JARVIS · Activar control avanzado")
                 .setMessage("Para tocar botones, escribir y leer pantallas de otras apps, activa Control de pantalla en Accesibilidad. Mostrar sobre otras apps puede ayudar a abrir interfaces desde segundo plano. Android no permite que Jarvis active estos accesos por sí solo.")
