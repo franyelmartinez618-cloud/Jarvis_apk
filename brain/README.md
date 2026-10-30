@@ -1,34 +1,39 @@
-# JARVIS Core — modelo neuronal propio desde cero
+# JARVIS Core — red neuronal propia desde cero
 
-Este directorio define el primer motor entrenable cuyo código, tokenización, arquitectura y pesos iniciales nacen dentro de este proyecto. No descarga Qwen, Llama, Gemma, GPT ni pesos preentrenados. La arquitectura actual es un decoder Transformer causal pequeño y experimental, entrenado con inicialización aleatoria.
+Este proyecto implementa su propia arquitectura, tokenizador, inicialización aleatoria, entrenamiento, exportador y runtime de inferencia Android. No importa ni reutiliza pesos de modelos lingüísticos preentrenados.
 
-## Qué significa desde cero
-- Pesos inicializados aleatoriamente por PyTorch.
-- Tokenizador UTF-8 byte-level implementado aquí (256 bytes + tokens especiales).
-- Bloques Transformer causales implementados en model.py.
-- Entrenamiento next-token en train.py, checkpoints propios y generación en generate.py.
-- No hay conocimiento previo: el modelo aprende únicamente del corpus que se le proporcione.
+## Arquitectura
 
-El código no equivale a un cerebro ya entrenado. Un modelo inicial aleatorio no sabe conversar. La calidad depende del tamaño, limpieza, diversidad y derechos de uso del corpus, además de GPU y tiempo de entrenamiento. No se declara que exista un checkpoint entrenado hasta que un entrenamiento real lo produzca y pase evaluación.
+- `model.py`: decoder Transformer causal con atención multi-cabeza y MLP.
+- `tokenizer.py`: tokenizador UTF-8 byte-level (256 bytes y tokens especiales).
+- `train.py`: entrenamiento de predicción del siguiente token desde pesos aleatorios.
+- `export_android.py`: serializa los tensores a `JARVIS01`.
+- `android/JarvisNativeBrain.kt`: runtime Kotlin que lee ese formato y ejecuta el Transformer en CPU.
 
-## Arranque local
+El perfil inicial es móvil y deliberadamente pequeño (2 capas, ancho 64, contexto 128). Sirve para validar el ciclo completo, no para competir con modelos grandes ni para afirmar AGI. Los 48 ejemplos de `data/seed/jarvis_core.jsonl` enseñan la identidad y el comportamiento previsto de JARVIS, pero no aportan conocimiento mundial.
+
+## Entrenamiento
+
 Python 3.11+, PyTorch 2.4+ y una GPU NVIDIA recomendada:
+
 ```powershell
 py -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r brain/requirements.txt
-python brain/prepare_corpus.py --input data/raw --output data/processed/corpus.txt
-python brain/train.py --config brain/config.json
-python brain/generate.py --checkpoint checkpoints/jarvis.pt --prompt "Hola, ¿quién eres?"
+python brain/prepare_corpus.py --input data/seed --output data/processed/corpus.txt
+python brain/train.py --config brain/config.json --data data/processed/corpus.txt --out checkpoints/jarvis.pt
+python brain/generate.py --checkpoint checkpoints/jarvis.pt --prompt "### Usuario:\nHola.\n### JARVIS:"
+python brain/export_android.py --checkpoint checkpoints/jarvis.pt --output brain/artifacts/jarvis-brain.bin
 ```
 
-Pon textos propios o con licencia compatible en data/raw (.txt, .md, .jsonl con campo text). El preparador normaliza, elimina duplicados exactos y registra un manifiesto; no descarga ni copia a ciegas corpus con copyright.
+No se ha ejecutado ni validado todavía un entrenamiento general. Amplía el corpus con material propio o fuentes cuya licencia permita explícitamente entrenamiento. Conserva procedencia y fecha. No uses datos privados, credenciales o contenido sin autorización.
 
-## Corpus amplio
-Construye un corpus multilingüe y multidominio con material creado por ti, documentación con licencia compatible, datos públicos cuya licencia permita entrenamiento y ejemplos de diálogo redactados y curados. Conserva por fuente URL, autor, licencia y fecha en data/sources.jsonl. No uses datos privados, credenciales, conversaciones de otras personas ni contenido cuya licencia no permita este uso.
+## Integración en APK
 
-## Escala
-El config inicial es deliberadamente pequeño para verificar el pipeline. Después de medir memoria, tokens/segundo y pérdida de validación, aumenta capas, ancho, contexto y corpus por etapas. No escales a cientos de miles de millones de parámetros sin infraestructura, datos y evaluación adecuados.
+El workflow copia `brain/artifacts/jarvis-brain.bin` a los assets Android cuando el archivo existe. Sin ese archivo, JARVIS inicia su núcleo local de capacidades y un índice pequeño de conocimiento, informa que el checkpoint está pendiente y mantiene el enrutador de comandos Android. No ejecuta pesos aleatorios como si fueran una IA entrenada.
 
-## Voz británica
-La voz de salida es TTS, no del modelo lingüístico. La interfaz web solicita en-GB y una voz grave/lenta disponible. Android debe configurar su motor TextToSpeech con Locale.UK y elegir una voz masculina instalada si el motor ofrece una; Android no garantiza que todos los dispositivos tengan la misma voz. No se usa clonación de voces.
+Tras entrenar y evaluar un checkpoint, vuelve a compilar Android. El runtime verifica la cabecera, vocabulario, dimensiones y pesos antes de inferir. El formato no requiere LiteRT, un SDK de terceros ni un servidor conversacional.
+
+## Voz
+
+La transcripción de voz es un componente separado del razonamiento. El reconocedor del APK convierte audio en texto. La síntesis de voz también es independiente: Android usa el motor TTS disponible y debe seleccionar una voz en-GB adecuada si el dispositivo la ofrece.
