@@ -726,6 +726,28 @@ if old_after not in main:
     raise SystemExit("No se encontró el bloque de inicialización para revisar permisos tras actualizar.")
 main = main.replace(old_after, new_after, 1)
 
+# Updating from v89 must not silently start the new one-time model download.
+restart_old = """                    if (restartService && hasPermission(Manifest.permission.RECORD_AUDIO)) {
+                        val serviceIntent = Intent(this, JarvisService::class.java)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent) else startService(serviceIntent)
+                        statePrefs.edit().putBoolean("was_running", true).apply()
+                    }"""
+restart_new = """                    val brainFile = File(noBackupFilesDir, "jarvis-brain-qwen3-1.7b.litertlm")
+                    val modelAccepted = brainFile.exists() || statePrefs.getBoolean("brain_download_accepted", false)
+                    if (restartService && hasPermission(Manifest.permission.RECORD_AUDIO) && modelAccepted) {
+                        val serviceIntent = Intent(this, JarvisService::class.java)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent) else startService(serviceIntent)
+                        statePrefs.edit().putBoolean("was_running", true).apply()
+                    } else {
+                        statePrefs.edit().putBoolean("was_running", false).apply()
+                        if (restartService && !modelAccepted) {
+                            status.text = "ACTUALIZACIÓN LISTA · PULSA INICIAR PARA CONFIGURAR EL CEREBRO LOCAL"
+                        }
+                    }"""
+if restart_old not in main:
+    raise SystemExit("No se encontró el reinicio automático que debe respetar el consentimiento del modelo.")
+main = main.replace(restart_old, restart_new, 1)
+
 # First-run copy must explain the local model download, not claim that only canned skills are used.
 main = main.replace(
     "JARVIS funciona en este teléfono y no envía tus conversaciones a Gemini ni a otra IA remota. Esta versión utiliza habilidades locales creadas para la aplicación; no es una IA general entrenada desde cero.\\n\\n",
