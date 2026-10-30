@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.Normalizer
 import java.util.Locale
+import org.json.JSONObject
 import kotlin.math.exp
 import kotlin.math.sqrt
 
@@ -51,7 +52,7 @@ internal class JarvisNativeBrain(context: Context) {
 
     private data class Note(val terms: Set<String>, val answer: String)
 
-    private val notes = listOf(
+    private val fallbackNotes = listOf(
         Note(setOf("quien", "eres", "jarvis", "identidad"), "Soy JARVIS, el asistente personal de este teléfono. Mi motor conversacional propio está siendo construido y entrenado desde inicialización aleatoria; no utilizo modelos de lenguaje de terceros."),
         Note(setOf("como", "funcionas", "motor", "cerebro", "modelo", "entrenamiento"), "Mi arquitectura neuronal propia está implementada en este proyecto. El código y los pesos iniciales son nuestros. Todavía falta reunir un corpus amplio y lícito, entrenar el checkpoint y evaluarlo antes de afirmar que tengo conocimiento general."),
         Note(setOf("llama", "gemma", "chatgpt", "terceros", "externo"), "El motor de conversación de JARVIS no descarga ni ejecuta modelos lingüísticos externos. El reconocimiento de voz se mantiene separado del razonamiento: solo convierte audio en texto."),
@@ -67,6 +68,24 @@ internal class JarvisNativeBrain(context: Context) {
         Note(setOf("voz", "hablar", "escuchar", "microfono"), "El micrófono necesita permiso. El reconocedor de voz transcribe lo que dices; es una pieza separada del motor de razonamiento propio. La voz que responde depende del motor de síntesis instalado en Android."),
         Note(setOf("entrenar", "datos", "corpus", "conocimiento", "informacion"), "Para aprender necesito documentos propios o con licencia que permita entrenamiento. El proyecto ya tiene tokenizador byte-level, arquitectura Transformer causal, entrenamiento desde cero y exportación a un formato que el runtime Android puede leer. No existe todavía un checkpoint general entrenado.")
     )
+
+    private val notes: List<Note> by lazy {
+        loadSeedNotes(context) + fallbackNotes
+    }
+
+    private fun loadSeedNotes(context: Context): List<Note> = runCatching {
+        val pattern = Regex("### Usuario:\\s*(.*?)\\s*### JARVIS:\\s*(.*)", setOf(RegexOption.DOT_MATCHES_ALL))
+        context.assets.open("jarvis-knowledge.jsonl").bufferedReader(Charsets.UTF_8).useLines { lines ->
+            lines.mapNotNull { line ->
+                val record = runCatching { JSONObject(line).optString("text") }.getOrNull().orEmpty()
+                val match = pattern.find(record) ?: return@mapNotNull null
+                val question = match.groupValues[1].trim()
+                val answer = match.groupValues[2].trim()
+                val terms = normalize(question).split(Regex("\\s+")).filter { it.length >= 3 }.toSet()
+                if (terms.isEmpty() || answer.isBlank()) null else Note(terms, answer)
+            }.toList()
+        }
+    }.getOrDefault(emptyList())
 
     private fun retrieveLocalKnowledge(input: String): String {
         val normalized = normalize(input)
