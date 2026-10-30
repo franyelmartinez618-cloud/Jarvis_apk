@@ -141,7 +141,7 @@ on_resume_pattern = re.compile(
     r'(?ms)^    override fun onResume\(\) \{.*?^    \}\n\n(?=    private fun showWelcomeDialog)'
 )
 main, count = on_resume_pattern.subn(
-    "    override fun onResume() {\n        super.onResume()\n        refreshUi()\n    }\n\n",
+    "    override fun onResume() {\n        super.onResume()\n        desiredActive = JarvisService.running\n        handler.removeCallbacks(serviceWatcher)\n        handler.post(serviceWatcher)\n        refreshUi()\n    }\n\n    override fun onPause() {\n        handler.removeCallbacks(serviceWatcher)\n        super.onPause()\n    }\n\n",
     main,
     count=1
 )
@@ -357,6 +357,7 @@ button_methods = r'''    private fun onMainButton() {
                 handler.postDelayed({
                     stopRequested = false
                     desiredActive = JarvisService.running
+                    if (!desiredActive) status.text = "CORE EN ESPERA · LISTO PARA INICIAR"
                     refreshUi()
                 }, 1200)
             } catch (e: Exception) {
@@ -542,7 +543,7 @@ new_tail = r'''    private fun refreshUi() {
             paint.strokeWidth = 1.2f
             paint.color = Color.parseColor("#557184")
             for (i in 0 until 12) {
-                val angle = Math.toRadians((i * 30.0) + phase * 0.18)
+                val angle = Math.toRadians((i * 30.0) + phase.toDouble() * 0.18)
                 val inner = r * 0.78f
                 val outer = r * 0.91f
                 canvas.drawLine(
