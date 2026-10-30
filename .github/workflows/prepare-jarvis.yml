@@ -48,13 +48,13 @@ jobs:
           lines = text.splitlines()
           found = False
           for index, line in enumerate(lines):
-              if "private const val GRAMMAR =" in line:
+                  lines[index] = r'        private const val GRAMMAR = "[\"jarvis\", \"hola jarvis\", \"oye jarvis\", \"ey jarvis\", \"jarvis estas ahi\", \"jarvis estas despierto\", \"jarvis estas activo\", \"jarvis me escuchas\", \"jarvis despierta\", \"jarvis activa\", \"jarvis necesito ayuda\", \"[unk]\"]"'
                   lines[index] = r'        private const val GRAMMAR = "[\\"jarvis\\", \\"hola jarvis\\", \\"oye jarvis\\", \\"ey jarvis\\", \\"jarvis estas ahi\\", \\"jarvis estas despierto\\", \\"jarvis estas activo\\", \\"jarvis me escuchas\\", \\"jarvis despierta\\", \\"jarvis activa\\", \\"jarvis necesito ayuda\\", \\"[unk]\\"]"'
                   found = True
                   break
           if not found:
               raise SystemExit("No se encontró la gramática de WakeWordListener.kt")
-          text = "\\n".join(lines) + "\\n"
+          text = "\n".join(lines) + "\n"
           old = 'if (text.contains("jarvis") && text.contains("activate")) {'
           if old not in text:
               raise SystemExit("No se encontró la condición original de despertar Jarvis.")
