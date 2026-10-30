@@ -6,6 +6,9 @@ on:
     branches: [ main ]
     paths:
       - "brain/**"
+      - "data/seed/**"
+      - "scripts/prepare_jarvis_native_brain.py"
+      - ".github/workflows/prepare-jarvis.yml"
       - "web/**"
       - ".github/workflows/validate-jarvis-core.yml"
 jobs:
@@ -21,6 +24,17 @@ jobs:
           node-version: "22"
       - name: Syntax-check Python
         run: python -m compileall -q brain
+      - name: Compile generated Android patcher
+        run: python -m py_compile scripts/prepare_jarvis_native_brain.py
+      - name: Prepare the project seed corpus
+        run: |
+          python brain/prepare_corpus.py --input data/seed --output "$RUNNER_TEMP/jarvis-seed.txt"
+          test -s "$RUNNER_TEMP/jarvis-seed.txt"
+      - name: Check native brain runtime contract
+        run: |
+          grep -q 'JARVIS01' brain/android/JarvisNativeBrain.kt
+          grep -q 'JarvisNativeBrain' scripts/prepare_jarvis_native_brain.py
+          ! grep -E -i 'qwen|litertlm|huggingface|sendMessageAsync' brain/android/JarvisNativeBrain.kt
       - name: Test tokenizer
         working-directory: brain
         run: python -m unittest discover -s tests -v
