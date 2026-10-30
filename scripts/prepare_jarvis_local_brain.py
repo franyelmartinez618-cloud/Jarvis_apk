@@ -579,7 +579,11 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
     }
 
     private suspend fun runNaturalPhoneAction(raw: String): Boolean {
-        val text = strip(raw).lowercase().replace(Regex("[¿?¡!.,;]"), " ").trim()
+        val text = strip(raw).lowercase()
+            .replace(Regex("[¿?¡!.,;]"), " ")
+            .trim()
+            .replaceFirst(Regex("^(?:(?:oye|hey|ey)\\s+)?jarvis\\b\\s*"), "")
+            .trim()
         if (text.isBlank()) return false
 
         // Keep compound requests together. "Open WhatsApp and search for X" is one intent plan.
