@@ -1,0 +1,89 @@
+JARVIS — CORPUS EDUCATIVO ORIGINAL EN ESPAÑOL
+
+El método científico organiza la investigación mediante observación, preguntas, hipótesis, experimentos, análisis y conclusiones. Una hipótesis es una explicación provisional que puede contrastarse con evidencias. La ciencia cambia cuando aparecen pruebas mejores.
+
+La materia es todo aquello que tiene masa y ocupa espacio. Está formada por átomos y moléculas. Sus estados habituales son sólido, líquido y gaseoso; también existe el plasma. La masa no es lo mismo que el peso: el peso depende del campo gravitatorio.
+
+La energía permite producir cambios o realizar trabajo. No se crea ni se destruye en un sistema aislado: se transforma y se transfiere. Algunas formas son cinética, potencial, térmica, química, eléctrica, nuclear y radiante. La potencia mide la energía por unidad de tiempo.
+
+La electricidad se relaciona con la presencia y el movimiento de cargas. Los protones tienen carga positiva y los electrones negativa. La corriente es el flujo de carga por un conductor. El voltaje es una diferencia de potencial y la resistencia se opone al paso de corriente. La ley de Ohm expresa V = I por R. Un circuito requiere un camino conductor cerrado.
+
+El magnetismo se asocia a cargas en movimiento y propiedades de partículas. Polos iguales se repelen y polos opuestos se atraen. Una corriente puede producir un campo magnético; por eso funcionan los electroimanes y motores eléctricos.
+
+La luz es radiación electromagnética visible. En el vacío viaja aproximadamente a 299792 kilómetros por segundo. La reflexión devuelve luz en una superficie y la refracción cambia su dirección al pasar entre medios. El color depende de la longitud de onda y de la percepción visual.
+
+La química estudia composición, estructura, propiedades y transformaciones de la materia. Un elemento tiene átomos con el mismo número de protones. Un compuesto contiene elementos unidos químicamente. Una reacción reorganiza átomos y enlaces, no destruye átomos. La tabla periódica ordena elementos por número atómico.
+
+El agua es una molécula con dos átomos de hidrógeno y uno de oxígeno. Su fórmula es H2O. Es polar, forma puentes de hidrógeno y es un disolvente importante. A presión atmosférica estándar se congela cerca de cero grados Celsius y hierve cerca de cien grados.
+
+La biología estudia los seres vivos. La célula es la unidad básica de estructura y función de los organismos. Las células procariotas no tienen núcleo rodeado por membrana; las eucariotas sí. Las células utilizan información genética para producir moléculas y regular procesos.
+
+El ADN almacena información hereditaria. Está formado por nucleótidos y normalmente presenta dos cadenas complementarias en una doble hélice. Sus bases son adenina, timina, citosina y guanina. Los genes son segmentos de ADN que contribuyen a producir ARN funcional o proteínas.
+
+La evolución biológica describe cambios heredables en poblaciones a lo largo de generaciones. La selección natural ocurre cuando diferencias heredables influyen en la supervivencia y reproducción. También contribuyen la mutación, recombinación, deriva genética y flujo génico.
+
+La fotosíntesis convierte energía luminosa en energía química. En plantas, algas y algunas bacterias distintos pigmentos captan la luz. En plantas, los cloroplastos usan agua y dióxido de carbono para formar compuestos orgánicos y liberan oxígeno. La respiración celular utiliza nutrientes para obtener energía.
+
+El cuerpo humano contiene sistemas que trabajan conjuntamente. El sistema circulatorio transporta sangre, oxígeno, nutrientes y desechos. El corazón impulsa la sangre. El sistema respiratorio intercambia oxígeno y dióxido de carbono. El sistema nervioso recibe señales y coordina respuestas.
+
+Las neuronas transmiten señales eléctricas y químicas. Las sinapsis permiten comunicación entre neuronas. El aprendizaje y la memoria implican cambios en redes neuronales. No existe una única zona cerebral que realice por sí sola todo el pensamiento.
+
+La astronomía estudia cuerpos y fenómenos del universo. El sistema solar contiene el Sol, ocho planetas, planetas enanos, satélites, asteroides, cometas y polvo. La Tierra orbita el Sol y rota sobre su eje. La Luna es el satélite natural de la Tierra y su gravedad contribuye a las mareas.
+
+Una estrella es una esfera de plasma mantenida por su gravedad que produce energía mediante fusión nuclear durante etapas de su vida. El Sol es la estrella del sistema solar. Las galaxias son conjuntos de estrellas, gas, polvo y materia oscura unidos gravitacionalmente.
+
+Un agujero negro es una región del espacio-tiempo cuya gravedad es tan intensa que, dentro del horizonte de sucesos, ni siquiera la luz escapa. Puede formarse por colapso gravitatorio de objetos muy masivos. Se estudia por sus efectos gravitatorios y observaciones de su entorno.
+
+La informática estudia el procesamiento automático de información. Un algoritmo es una secuencia finita y precisa de pasos para resolver un problema. Un programa expresa instrucciones mediante un lenguaje ejecutable. La programación incluye diseño, implementación, pruebas, depuración y mantenimiento.
+
+Una variable es un nombre asociado a un valor. Una función agrupa instrucciones y puede recibir parámetros y devolver resultados. Una condición escoge caminos según un criterio. Un bucle repite instrucciones mientras se cumpla una condición o queden elementos por procesar.
+
+Una base de datos organiza información para almacenarla, consultarla y modificarla. Una base relacional representa datos mediante tablas relacionadas por claves. SQL es un lenguaje habitual para consultar bases relacionales. Una clave primaria identifica una fila y una clave foránea relaciona tablas.
+
+Internet es una red mundial de redes que intercambian información mediante protocolos. IP direcciona paquetes entre redes. TCP ofrece datos fiables y ordenados; UDP ofrece datagramas con menos garantías. DNS traduce nombres de dominio y HTTPS protege comunicaciones HTTP mediante TLS.
+
+La ciberseguridad protege sistemas, redes y datos frente a accesos no autorizados. La autenticación verifica una identidad; la autorización determina qué puede hacer esa identidad. Las contraseñas deben ser únicas y guardarse mediante mecanismos de hash adecuados. Las copias de seguridad deben probarse mediante restauraciones.
+
+La inteligencia artificial estudia sistemas que realizan tareas relacionadas con percepción, aprendizaje, razonamiento, lenguaje o decisión. El aprendizaje automático ajusta parámetros de modelos usando datos. Una red neuronal contiene unidades conectadas mediante pesos numéricos. Los parámetros se modifican durante el entrenamiento para reducir una función de pérdida.
+
+Un Transformer utiliza mecanismos de atención para relacionar elementos de una secuencia. Un modelo autorregresivo aprende a predecir el siguiente token a partir de tokens anteriores. La calidad depende de arquitectura, datos, entrenamiento, evaluación y recursos de cómputo.
+
+Entrenar desde cero significa inicializar pesos sin cargar un modelo preentrenado y aprender parámetros a partir de datos. Hacen falta corpus, tokenizador, optimización, evaluación y cómputo suficiente. La cantidad de parámetros no garantiza calidad. Las pruebas deben detectar errores, sesgos y respuestas poco fiables.
+
+Las matemáticas estudian cantidades, estructuras, relaciones y cambios. La aritmética trata operaciones con números. El álgebra usa símbolos para representar valores y relaciones. La geometría estudia formas y espacios. La estadística analiza datos y la probabilidad cuantifica incertidumbre.
+
+Una ecuación expresa que dos expresiones tienen el mismo valor. Resolverla requiere transformaciones que conservan la igualdad. Una función relaciona cada elemento de un dominio con un único valor de salida. El cálculo estudia límites, derivadas e integrales.
+
+La economía estudia cómo personas y sociedades producen, distribuyen e intercambian bienes y servicios. La oferta describe cuánto desean vender productores y la demanda cuánto desean comprar consumidores. La inflación es un aumento generalizado y sostenido del nivel de precios.
+
+La energía renovable procede de fuentes que se reponen naturalmente en escalas humanas. La energía solar aprovecha radiación del Sol; la eólica convierte energía del viento; la hidroeléctrica utiliza agua en movimiento. Cada tecnología tiene costes, impactos y condiciones geográficas diferentes.
+
+La historia analiza el pasado humano mediante documentos, objetos, testimonios y restos arqueológicos. Las fuentes primarias proceden de la época estudiada; las secundarias interpretan fuentes. Una explicación histórica debe distinguir hechos, hipótesis e interpretaciones.
+
+La geografía estudia espacios, territorios y relaciones entre sociedades y medio ambiente. La latitud mide posición al norte o sur del ecuador y la longitud mide posición al este u oeste de un meridiano. El clima describe patrones largos y el tiempo meteorológico condiciones breves.
+
+El aprendizaje consiste en adquirir conocimientos, habilidades y conductas mediante experiencia o estudio. La práctica espaciada, recuperación activa y retroalimentación pueden mejorar retención. Explicar una idea con palabras propias ayuda a comprobar comprensión.
+
+La comunicación transmite información mediante símbolos, señales y contexto. El emisor produce un mensaje y el receptor lo interpreta a través de un canal. El ruido puede alterar el mensaje. La retroalimentación ayuda a comprobar si se comprendió.
+
+La robótica combina mecánica, electrónica, sensores, control y programación para construir máquinas que perciben y actúan. Un robot utiliza sensores para estimar su estado y actuadores para moverse. Sistemas autónomos requieren límites, supervisión y mecanismos de parada.
+
+El español es una lengua romance derivada del latín. La gramática estudia cómo se organizan palabras y oraciones. La semántica analiza significados y la pragmática estudia cómo el contexto influye en la interpretación. Una expresión puede variar según intención y situación.
+
+El inglés es una lengua germánica occidental con variedades regionales. El inglés británico incluye diferentes acentos de Inglaterra, Escocia, Gales e Irlanda del Norte; no existe un solo acento británico. Una voz inglesa puede pronunciar mal texto español si el motor no cambia de idioma.
+
+El Reino Unido está formado por Inglaterra, Escocia, Gales e Irlanda del Norte. Londres es su capital. El inglés es la lengua más hablada y existen lenguas regionales como galés, gaélico escocés e irlandés.
+
+Colombia está en el noroeste de América del Sur. Tiene costas en el mar Caribe y el océano Pacífico. Su territorio incluye regiones andinas, caribeñas, pacíficas, amazónicas, de Orinoquía e insulares. Bogotá es la capital nacional.
+
+El departamento del Atlántico está en la región Caribe de Colombia y su capital es Barranquilla. Malambo es un municipio del área metropolitana de Barranquilla. Horarios, servicios, trámites y normas locales cambian y deben comprobarse con fuentes oficiales recientes.
+
+Las pruebas de software comparan comportamiento real con el esperado. Pruebas unitarias verifican componentes pequeños; las de integración examinan colaboraciones; las de sistema revisan la aplicación completa. Una prueba que pasa aporta evidencia, pero no demuestra ausencia total de errores.
+
+La privacidad requiere recoger lo mínimo necesario, explicar su propósito y protegerlo. El cifrado ayuda frente a lectura no autorizada, pero no sustituye una buena gestión de permisos. Los registros deben evitar contraseñas, claves y datos sensibles. El usuario debe poder revisar y borrar datos.
+
+Android administra permisos sensibles y servicios en segundo plano. Una aplicación normal no puede concederse permisos especiales. La persona debe autorizar Accesibilidad, instalación de otras fuentes o ajustes especiales desde pantallas del sistema. El fabricante puede limitar procesos con ahorro de batería.
+
+La síntesis de voz convierte texto en audio. Android ofrece TextToSpeech que utiliza voces instaladas. El nombre de una voz no garantiza género ni calidad; el catálogo depende del motor y de sus datos. Seleccionar idioma inglés británico no asegura buena pronunciación de texto español.
+
+La automatización debe confirmar acciones con consecuencias, como enviar mensajes, publicar, comprar, transferir o borrar datos. Abrir una app o rellenar un mensaje no equivale a enviarlo. La persona debe conservar control sobre acciones irreversibles.
