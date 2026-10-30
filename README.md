@@ -1,14 +1,42 @@
 # J.A.R.V.I.S. — asistente personal para Android
 
-Proyecto Android existente, conservando identidad, paquete y firma de actualización. La versión instalada actualmente usa un motor conversacional local de terceros; el objetivo aprobado ahora es sustituirlo por un modelo entrenado desde inicialización aleatoria dentro del proyecto.
+Proyecto Android existente. Se conserva el paquete de la aplicación, el flujo de firma y la ruta de actualización.
 
-## Próxima arquitectura
-- web/: interfaz PWA que se publica automáticamente con GitHub Pages; la app Android deberá integrar este runtime mediante WebView y puente nativo para que la interfaz web se actualice sin APK.
-- brain/: primer decoder Transformer, tokenizador byte-level y entrenamiento desde cero. No contiene ni descarga pesos preentrenados.
-- Android: conserva permisos y herramientas nativas. Las acciones sensibles requieren confirmación del usuario.
-- Voz: salida objetivo en inglés británico (en-GB), tono calmado y grave. La disponibilidad de una voz masculina depende de las voces instaladas en el motor TTS del dispositivo.
+## Trabajo de sustitución del cerebro
 
-## Estado honesto
-El código de arquitectura y entrenamiento es el primer prototipo, no un cerebro ya entrenado. Un checkpoint aleatorio no sabe conversar: requiere un corpus grande, legal y diverso y entrenamiento real con GPU. No se afirma que JARVIS tenga conocimientos ilimitados ni AGI. La interfaz web se publica por workflow al integrarse en main; hasta integrar el WebView en Android, la APK no cambia visualmente.
+La versión estable que estaba publicada desde `main` (v112) todavía fue construida con el motor anterior. Esta rama de trabajo elimina de la APK el motor conversacional de terceros y conecta un runtime Android propio, escrito en Kotlin, que carga exclusivamente checkpoints creados por el entrenamiento de este repositorio.
 
-Consulta brain/README.md para preparar el corpus y entrenar. Consulta data/README.md para las reglas de datos.
+- `brain/model.py`: Transformer causal propio, con pesos inicializados aleatoriamente.
+- `brain/tokenizer.py`: tokenizador propio byte-level UTF-8.
+- `brain/train.py`: entrenamiento next-token desde cero.
+- `brain/export_android.py`: exportación de pesos al formato binario versionado `JARVIS01`.
+- `brain/android/JarvisNativeBrain.kt`: inferencia Kotlin propia, sin LiteRT ni SDK de modelos externos.
+- `data/seed/jarvis_core.jsonl`: 48 ejemplos originales sobre identidad, funciones Android, permisos y reglas de seguridad del proyecto.
+
+El reconocedor Vosk se mantiene únicamente como componente separado de transcripción de voz a texto; no genera respuestas ni decide acciones. El razonamiento conversacional no depende de él.
+
+## Estado real del cerebro
+
+El runtime propio y el pipeline de entrenamiento/exportación están creados. **Todavía no existe un checkpoint neuronal entrenado**. Sin checkpoint, Android utiliza el índice local de conocimiento del proyecto y el enrutador de órdenes del teléfono; no presenta la red aleatoria como si supiera conversar. Los 48 ejemplos semilla sirven para enseñar identidad y capacidades, pero no constituyen conocimiento general.
+
+Para el primer entrenamiento:
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r brain/requirements.txt
+python brain/prepare_corpus.py --input data/seed --output data/processed/corpus.txt
+python brain/train.py --config brain/config.json --data data/processed/corpus.txt --out checkpoints/jarvis.pt
+python brain/export_android.py --checkpoint checkpoints/jarvis.pt --output brain/artifacts/jarvis-brain.bin
+```
+
+Después de revisar métricas y respuestas, el archivo `brain/artifacts/jarvis-brain.bin` se incluye en la siguiente compilación Android. Para conocimiento amplio se deben añadir fuentes legales, multilingües y multidominio, registrar su procedencia y ampliar la evaluación.
+
+## Android y permisos
+
+Las acciones del teléfono siguen separadas del texto generado. Android determina qué permisos están concedidos. Llamadas y mensajes requieren permisos y confirmación; Accesibilidad, mostrar sobre otras aplicaciones y modificar ajustes necesitan activación en Ajustes del sistema. No se afirma que JARVIS pueda concederse esos permisos a sí mismo.
+
+## Voz e interfaz
+
+La voz objetivo es masculina británica, calmada y grave (en-GB), si el sintetizador instalado ofrece una voz adecuada. Voz a texto, razonamiento neuronal y texto a voz son componentes separados. La PWA de `web/` es una interfaz adicional; falta integrar su WebView nativo para actualizarla sin reinstalar la APK.
+
+No se declara AGI, conocimiento ilimitado ni control total del dispositivo. La publicación de esta rama y su APK firmada requieren que la compilación Android pase y que se publique desde `main` usando la firma estable.
