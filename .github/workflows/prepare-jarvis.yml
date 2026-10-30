@@ -2,7 +2,7 @@ name: Construir APK de Jarvis
 
 on:
   push:
-    branches: [ main, "fix/jarvis-voice-to-voice-no-biometric-20261030", "fix/jarvis-model-state-ironui-20261029" ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -64,12 +64,6 @@ jobs:
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis.py" "$PROJECT"
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_updates.py" "$PROJECT"
           python3 "$GITHUB_WORKSPACE/scripts/prepare_jarvis_voice_unlock.py" "$PROJECT"
-          echo "=== JARVIS MODEL INITIALIZATION DIAGNOSTIC ==="
-          grep -n -E -C 5 'Model\\(|model-es|copyAssets|copyAsset|missing|not found|modelo de voz|private var model|lateinit var model' "$PROJECT/app/src/main/java/com/jarvis/personal/JarvisService.kt" || true
-          echo "=== PACKAGED VOSK ASSETS ==="
-          find "$PROJECT/app/src/main/assets" -maxdepth 3 -type f | head -35 || true
-          echo "=== SERVICE LIFECYCLE ==="
-          grep -n -E -C 4 'running|onStartCommand|onCreate|onDestroy|stopSelf|stopForeground|startForeground' "$PROJECT/app/src/main/java/com/jarvis/personal/JarvisService.kt" | head -180 || true
           MANIFEST="$PROJECT/app/src/main/AndroidManifest.xml"
           SERVICE="$PROJECT/app/src/main/java/com/jarvis/personal/JarvisService.kt"
           grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST"
