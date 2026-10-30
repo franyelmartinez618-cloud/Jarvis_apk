@@ -155,11 +155,12 @@ private class NativeTransformer(bytes: ByteArray) {
     }
 
     fun generate(prompt: String, maxTokens: Int): String {
-        val ids = prompt.toByteArray(Charsets.UTF_8).map { it.toInt() and 0xff }.toMutableList()
+        val ids = mutableListOf(256)
+        ids.addAll(prompt.toByteArray(Charsets.UTF_8).map { it.toInt() and 0xff })
         val initialSize = ids.size
         for (step in 0 until maxTokens.coerceIn(1, 256)) {
             val token = next(ids)
-            if (token == 257 || token == 258) break
+            if (token == 256 || token == 257 || token == 258) break
             ids.add(token)
         }
         val generated = ids.drop(initialSize).filter { it in 0..255 }.map { it.toByte() }.toByteArray()
