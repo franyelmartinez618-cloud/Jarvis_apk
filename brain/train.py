@@ -14,7 +14,7 @@ from pathlib import Path
 import torch
 
 from model import JarvisGPT
-from tokenizer import ByteTokenizer
+from tokenizer import ByteTokenizer, BOS, EOS
 
 DOCUMENT_SEPARATOR = "\\n\\n<|document|>\\n\\n"
 
@@ -49,10 +49,16 @@ def main():
     train_docs, validation_docs = split_documents(corpus, seed)
     tokenizer = ByteTokenizer()
 
-    train_text = DOCUMENT_SEPARATOR.join(train_docs)
-    validation_text = DOCUMENT_SEPARATOR.join(validation_docs)
-    train_ids = torch.tensor(tokenizer.encode(train_text), dtype=torch.long)
-    validation_ids = torch.tensor(tokenizer.encode(validation_text), dtype=torch.long)
+    def encode_documents(documents):
+        encoded = []
+        for document in documents:
+            encoded.append(BOS)
+            encoded.extend(tokenizer.encode(document))
+            encoded.append(EOS)
+        return torch.tensor(encoded, dtype=torch.long)
+
+    train_ids = encode_documents(train_docs)
+    validation_ids = encode_documents(validation_docs)
     context = int(config["context"])
     if len(train_ids) < int(config.get("minimum_train_bytes", context * 4)) or len(validation_ids) < int(config.get("minimum_validation_bytes", context * 2)):
         raise SystemExit(
