@@ -13,6 +13,22 @@ from model import JarvisGPT
 from tokenizer import BOS, EOS, PAD, ByteTokenizer
 
 PAIR = re.compile(r"### Usuario:\s*(.*?)\s*### JARVIS:\s*(.*)", re.DOTALL)
+PROMPT_PREFIXES = (
+    "Explícalo con claridad: ",
+    "Necesito entender esto: ",
+    "Dame una respuesta directa: ",
+    "Ayúdame con esta duda: ",
+    "Responde de forma breve y precisa: ",
+)
+
+
+def augment_training_prompts(examples):
+    """Create varied user phrasings without leaking variants into validation."""
+    expanded = []
+    for question, answer, source in examples:
+        expanded.append((question, answer, source))
+        expanded.extend((prefix + question, answer, source) for prefix in PROMPT_PREFIXES)
+    return expanded
 
 
 def load_pairs(root: Path, include_generated: bool = False):
@@ -87,6 +103,8 @@ def main():
     validation_count = max(1, round(len(raw_examples) * 0.10))
     validation_raw = raw_examples[:validation_count]
     train_raw = raw_examples[validation_count:]
+    base_train_count = len(train_raw)
+    train_raw = augment_training_prompts(train_raw)
     train_examples = [encode_pair(q, a, tokenizer, context) for q, a, _ in train_raw]
     validation_examples = [encode_pair(q, a, tokenizer, context) for q, a, _ in validation_raw]
 
@@ -141,7 +159,8 @@ def main():
     parameter_count = sum(p.numel() for p in model.parameters())
     print(
         f"JARVIS SFT | device={device} | params={parameter_count:,} | "
-        f"train_pairs={len(train_examples)} | validation_pairs={len(validation_examples)} | "
+        f"train_pairs={len(train_examples)} (from {base_train_count} authored pairs) | "
+        f"validation_pairs={len(validation_examples)} | "
         f"synthetic_examples={'included' if args.include_generated else 'excluded'}",
         flush=True,
     )

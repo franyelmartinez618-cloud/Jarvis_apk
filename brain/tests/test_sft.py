@@ -4,10 +4,17 @@ import unittest
 from pathlib import Path
 
 from tokenizer import ByteTokenizer
-from train_sft import encode_pair, load_pairs
+from train_sft import augment_training_prompts, encode_pair, load_pairs
 
 
 class InstructionTuningTests(unittest.TestCase):
+    def test_authored_questions_receive_prompt_variants(self):
+        expanded = augment_training_prompts([("¿Qué es una API?", "Es una interfaz.", "seed")])
+        self.assertEqual(len(expanded), 6)
+        self.assertEqual(expanded[0][0], "¿Qué es una API?")
+        self.assertTrue(all(item[1] == "Es una interfaz." for item in expanded))
+        self.assertEqual(len({item[0] for item in expanded}), 6)
+
     def test_synthetic_math_is_excluded_from_sft_by_default(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

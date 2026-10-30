@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.Normalizer
 import java.util.Locale
+import java.util.Random
 import org.json.JSONObject
 import kotlin.math.exp
 import kotlin.math.sqrt
@@ -116,6 +117,7 @@ private class NativeTransformer(bytes: ByteArray) {
     private val layers: List<Layer>
     private val tokenEmbedding: FloatArray
     private val positionEmbedding: FloatArray
+    private val random = Random()
     private val finalNormWeight: FloatArray
     private val finalNormBias: FloatArray
     private val vocab: Int
@@ -158,16 +160,18 @@ private class NativeTransformer(bytes: ByteArray) {
         val ids = mutableListOf(256)
         ids.addAll(prompt.toByteArray(Charsets.UTF_8).map { it.toInt() and 0xff })
         val initialSize = ids.size
+        val generated = mutableListOf<Int>()
         for (step in 0 until maxTokens.coerceIn(1, 256)) {
-            val token = next(ids)
+            val token = next(ids, generated)
             if (token == 256 || token == 257 || token == 258) break
+            generated.add(token)
             ids.add(token)
         }
         val generated = ids.drop(initialSize).filter { it in 0..255 }.map { it.toByte() }.toByteArray()
         return String(generated, Charsets.UTF_8)
     }
 
-    private fun next(all: List<Int>): Int {
+    private fun next(all: List<Int>, generated: List<Int>): Int {
         val ids = all.takeLast(context)
         val length = ids.size
         var x = Array(length) { t ->
@@ -202,9 +206,29 @@ private class NativeTransformer(bytes: ByteArray) {
             }
             logits[token] = score
         }
-        var best = 0
-        for (i in 1 until logits.size) if (logits[i] > logits[best]) best = i
-        return best
+        // Mirror evaluate.py: penalize recently repeated bytes, then sample from top-k.
+        for (token in generated.takeLast(64).toSet()) {
+            if (token in logits.indices) {
+                val value = logits[token]
+                logits[token] = if (value >= 0f) value / 1.2f else value * 1.2f
+            }
+        }
+        if (256 in logits.indices) logits[256] = Float.NEGATIVE_INFINITY
+        if (258 in logits.indices) logits[258] = Float.NEGATIVE_INFINITY
+        val candidates = logits.indices
+            .filter { logits[it].isFinite() }
+            .sortedByDescending { logits[it] }
+            .take(20)
+        require(candidates.isNotEmpty()) { "JARVIS produced no valid next-token candidates" }
+        val maximum = candidates.maxOf { logits[it] }
+        val weights = candidates.map { kotlin.math.exp(((logits[it] - maximum) / 0.8f).toDouble()) }
+        val total = weights.sum()
+        var target = random.nextDouble() * total
+        for (index in candidates.indices) {
+            target -= weights[index]
+            if (target <= 0.0) return candidates[index]
+        }
+        return candidates.last()
     }
 
     private fun attention(qkv: Array<FloatArray>, length: Int, dim: Int, heads: Int): Array<FloatArray> {

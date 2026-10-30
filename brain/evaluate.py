@@ -1,4 +1,4 @@
-"""Evaluate an experimental JARVIS checkpoint on held-out prompts."""
+"""Evaluate an experimental JARVIS checkpoint with Android-matched decoding."""
 import argparse
 import json
 from pathlib import Path
@@ -9,12 +9,41 @@ from model import JarvisGPT
 from tokenizer import BOS, EOS, PAD, ByteTokenizer
 
 
+def apply_repetition_penalty(logits, history, penalty=1.2, window=64):
+    if penalty <= 1.0 or not history:
+        return logits.clone()
+    scores = logits.clone()
+    for token in set(history[-window:]):
+        if 0 <= token < scores.numel():
+            value = scores[token]
+            scores[token] = value / penalty if value >= 0 else value * penalty
+    return scores
+
+
+def sample_next_token(logits, history, temperature=0.8, top_k=20, repetition_penalty=1.2, generator=None):
+    scores = apply_repetition_penalty(logits.float(), history, repetition_penalty)
+    if scores.numel() > BOS:
+        scores[BOS] = float("-inf")
+    if scores.numel() > PAD:
+        scores[PAD] = float("-inf")
+    scores = scores / max(float(temperature), 1e-3)
+    count = min(max(1, int(top_k)), scores.numel())
+    values, indices = torch.topk(scores, count)
+    probabilities = torch.softmax(values, dim=-1)
+    selected = torch.multinomial(probabilities, 1, generator=generator)
+    return int(indices[selected].item())
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--questions", default="brain/eval/questions.jsonl")
     parser.add_argument("--output", default="reports/jarvis-quality.json")
     parser.add_argument("--max-tokens", type=int, default=180)
+    parser.add_argument("--temperature", type=float, default=0.8)
+    parser.add_argument("--top-k", type=int, default=20)
+    parser.add_argument("--repetition-penalty", type=float, default=1.2)
+    parser.add_argument("--seed", type=int, default=20261030)
     args = parser.parse_args()
 
     checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
@@ -34,15 +63,23 @@ def main():
         if line.strip()
     ]
     results = []
-    for item in questions:
-        prompt = f"### Usuario:\n{item['question']}\n### JARVIS:\n"
+    for question_index, item in enumerate(questions):
+        prompt = f"### Usuario:\\n{item['question']}\\n### JARVIS:\\n"
         ids = [BOS] + tokenizer.encode(prompt)
         generated = []
+        generator = torch.Generator(device="cpu").manual_seed(args.seed + question_index)
         with torch.no_grad():
             for _ in range(args.max_tokens):
                 context_ids = torch.tensor([ids[-config["context"]:]], dtype=torch.long, device=device)
                 logits, _ = model(context_ids)
-                next_token = int(logits[0, -1].argmax().item())
+                next_token = sample_next_token(
+                    logits[0, -1].detach().cpu(),
+                    generated,
+                    temperature=args.temperature,
+                    top_k=args.top_k,
+                    repetition_penalty=args.repetition_penalty,
+                    generator=generator,
+                )
                 if next_token in {BOS, EOS, PAD}:
                     break
                 generated.append(next_token)
@@ -77,6 +114,12 @@ def main():
         "nonempty_rate": nonempty,
         "average_keyword_recall": avg_recall,
         "average_repeated_trigram_ratio": avg_repetition,
+        "decoding": {
+            "temperature": args.temperature,
+            "top_k": args.top_k,
+            "repetition_penalty": args.repetition_penalty,
+            "seed": args.seed,
+        },
         "quality_passed": quality_passed,
         "warning": "Heuristic smoke test only; passing does not establish factuality or general intelligence.",
         "results": results,
