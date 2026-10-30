@@ -641,6 +641,41 @@ contacts_path.write_text(contacts, encoding="utf-8")
 # Android permissions: regular runtime permissions are requested after each app upgrade if they are missing;
 # special grants must be switched on by the user in Android Settings.
 main = main_path.read_text(encoding="utf-8")
+if "import java.io.File" not in main:
+    main = main.replace("package com.jarvis.personal\n", "package com.jarvis.personal\nimport java.io.File\n", 1)
+
+# Ask explicitly before the one-time, large local-model download on the phone.
+start_marker = "        val serviceIntent = Intent(this, JarvisService::class.java)\n"
+start_replacement = """        val brainFile = File(noBackupFilesDir, "jarvis-brain-qwen3-1.7b.litertlm")
+        if (!brainFile.exists() && !statePrefs.getBoolean("brain_download_accepted", false)) {
+            AlertDialog.Builder(this)
+                .setTitle("JARVIS · Descargar cerebro local")
+                .setMessage("Para conversar con naturalidad y entender órdenes abiertas, Jarvis necesita descargar Qwen3 (aprox. 932 MB, una sola vez). Después queda guardado en el teléfono y las conversaciones se procesan sin enviarlas a una IA remota. Necesitas internet para esta descarga y al menos 1.2 GB libres.")
+                .setPositiveButton("DESCARGAR CEREBRO") { _, _ ->
+                    statePrefs.edit().putBoolean("brain_download_accepted", true).apply()
+                    startJarvis()
+                }
+                .setNegativeButton("MÁS TARDE", null)
+                .show()
+            return
+        }
+""" + start_marker
+if start_marker not in main:
+    raise SystemExit("No se encontró el inicio del servicio para solicitar consentimiento de descarga.")
+main = main.replace(start_marker, start_replacement, 1)
+
+# The first-run permission queue also explains special Android grants that require manual Settings approval.
+permission_flow_end = """        completeSetupAndStart()
+    }
+
+    override fun onRequestPermissionsResult"""
+permission_flow_new = """        handler.postDelayed({ showSpecialAccessReminder() }, 450)
+        completeSetupAndStart()
+    }
+
+    override fun onRequestPermissionsResult"""
+if permission_flow_end in main:
+    main = main.replace(permission_flow_end, permission_flow_new, 1)
 main = main.replace(
     'text = "J A R V I S"',
     'text = "J A R V I S"',
