@@ -160,15 +160,15 @@ private class NativeTransformer(bytes: ByteArray) {
         val ids = mutableListOf(256)
         ids.addAll(prompt.toByteArray(Charsets.UTF_8).map { it.toInt() and 0xff })
         val initialSize = ids.size
-        val generated = mutableListOf<Int>()
+        val generatedIds = mutableListOf<Int>()
         for (step in 0 until maxTokens.coerceIn(1, 256)) {
-            val token = next(ids, generated)
+            val token = next(ids, generatedIds)
             if (token == 256 || token == 257 || token == 258) break
-            generated.add(token)
+            generatedIds.add(token)
             ids.add(token)
         }
-        val generated = ids.drop(initialSize).filter { it in 0..255 }.map { it.toByte() }.toByteArray()
-        return String(generated, Charsets.UTF_8)
+        val generatedBytes = ids.drop(initialSize).filter { it in 0..255 }.map { it.toByte() }.toByteArray()
+        return String(generatedBytes, Charsets.UTF_8)
     }
 
     private fun next(all: List<Int>, generated: List<Int>): Int {
