@@ -215,7 +215,8 @@ tool_methods = r'''    fun openAppFromModel(name: String): String {
     private suspend fun searchInsideAppForModel(appLabel: String, query: String): String {
         if (query.isBlank()) return "Dime qué quieres buscar dentro de " + appLabel + "."
         if (!JarvisAccessibilityService.isConnected()) {
-            return "Abrí " + appLabel + ", pero para buscar dentro de esa aplicación necesito que actives Control de pantalla en Ajustes > Accesibilidad. No abrí el navegador."
+            val settings = openSettingsForModel("accesibilidad")
+            return settings + " Activa el servicio de control de pantalla de JARVIS y luego repite la búsqueda. No abriré el navegador en sustitución."
         }
         delay(900)
         val searchControls = listOf(
@@ -681,6 +682,21 @@ phone_command_router = r'''    private fun spanishNumber(token: String): Int? {
         if (appSearch != null) {
             val query = appSearch.groupValues[1].trim().removePrefix("a ").trim()
             val appName = appSearch.groupValues[2].trim()
+            val opened = openAppFromModel(appName)
+            if (opened.startsWith("He abierto ")) {
+                speak(opened + " " + searchInsideAppForModel(appName, query))
+            } else {
+                speak(opened)
+            }
+            return true
+        }
+
+        // Also accept "search in WhatsApp for my brother" word order.
+        val appFirstSearch = Regex("^(?:busca|buscar|buscame|encuentra|localiza)\\s+(?:en|dentro de)\\s+(?:la app |la aplicacion |app |aplicacion )?(.+?)\\s+(?:a|sobre|por)\\s+(.+)$")
+            .find(text)
+        if (appFirstSearch != null) {
+            val appName = appFirstSearch.groupValues[1].trim()
+            val query = appFirstSearch.groupValues[2].trim().removePrefix("a ").trim()
             val opened = openAppFromModel(appName)
             if (opened.startsWith("He abierto ")) {
                 speak(opened + " " + searchInsideAppForModel(appName, query))
