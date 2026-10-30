@@ -46,6 +46,10 @@ jobs:
         run: |
           python brain/train.py --config brain/config-large.json --data data/processed/corpus.txt --out checkpoints/jarvis-large.pt
 
+      - name: Ajustar instrucciones de JARVIS sobre el checkpoint grande
+        run: |
+          python brain/train_sft.py --checkpoint checkpoints/jarvis-large.pt --data data/seed --config brain/sft-config.json --out checkpoints/jarvis-large-sft.pt
+
       - name: Exportar formato nativo Android
         run: |
           python brain/export_android.py --checkpoint checkpoints/jarvis-large-sft.pt --output brain/artifacts/jarvis-brain-large.bin
@@ -58,6 +62,8 @@ jobs:
           path: |
             checkpoints/jarvis-large.pt
             checkpoints/jarvis-large-last.pt
+            checkpoints/jarvis-large-sft.pt
+            checkpoints/jarvis-large-sft-last.pt
             checkpoints/jarvis-large.metrics.jsonl
             brain/artifacts/jarvis-brain-large.bin
             brain/artifacts/jarvis-brain-large.json
