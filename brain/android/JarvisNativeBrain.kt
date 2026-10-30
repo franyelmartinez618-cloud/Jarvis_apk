@@ -37,15 +37,15 @@ internal class JarvisNativeBrain(context: Context) {
         if (activeNeural != null) {
             val prompt = buildString {
                 history.takeLast(6).forEach { (role, message) ->
-                    append(if (role == "user") "Usuario: " else "JARVIS: ")
+                    append(if (role == "user") "### Usuario:\n" else "### JARVIS:\n")
                     append(message)
                     append('\n')
                 }
-                append("Usuario: ").append(clean).append('\n')
-                append("JARVIS:")
+                append("### Usuario:\n").append(clean).append('\n')
+                append("### JARVIS:\n")
             }
             val generated = runCatching { activeNeural.generate(prompt, 180) }.getOrNull()?.trim().orEmpty()
-            val safe = generated.substringBefore("\nUsuario:").substringBefore("\nJARVIS:").trim()
+            val safe = generated.substringBefore("\n### Usuario:").substringBefore("\n### JARVIS:").trim()
             if (safe.length >= 2) return safe.take(1600)
         }
         return retrieveLocalKnowledge(clean)
