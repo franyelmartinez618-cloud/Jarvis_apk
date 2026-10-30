@@ -2,7 +2,7 @@ name: Construir APK de Jarvis
 
 on:
   push:
-    branches: [ main, "fix/jarvis-voice-to-voice-no-biometric-20261030" ]
+    branches: [ main, "fix/jarvis-voice-to-voice-no-biometric-20261030", "fix/jarvis-model-state-ironui-20261029" ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
