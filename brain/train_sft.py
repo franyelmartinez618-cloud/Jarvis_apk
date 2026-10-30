@@ -116,7 +116,7 @@ def main():
         raise SystemExit("La división por conversación dejó un conjunto vacío.")
     base_train_count = len(train_raw)
     train_raw = augment_training_prompts(train_raw)
-    train_examples = [encode_pair(q, a, tokenizer, context) for q, a, _ in train_raw]
+    train_examples = [encode_pair(q, a, tokenizer, context) for q, a, *_ in train_raw]
     validation_examples = [encode_pair(q, a, tokenizer, context) for q, a, *_ in validation_raw]
 
     seed = int(config.get("seed", 20261030))
