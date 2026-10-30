@@ -36,13 +36,15 @@ conversation = r'''    /** Conversación continua de voz: ASR local para entende
             Log.d(TAG, "Frase reconocida localmente: " + clean)
             updateNotification("Jarvis está respondiendo")
             val command = Parser.parse(clean)
-            handle(command)
+            handle(command, clean)
             if (command == Cmd.Cancel) break
             delay(180)
         }
     }
 
-    private suspend fun handle(cmd: Cmd) {
+    private suspend fun handle(cmd: Cmd, raw: String) {
+        // Resolve the complete spoken request before the legacy single-command parser can truncate it.
+        if (runNaturalPhoneAction(raw)) return
         when (cmd) {
             is Cmd.Call -> doCall(cmd.target)
             is Cmd.Message -> doMessage(cmd)
