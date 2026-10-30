@@ -12,6 +12,9 @@ def replace_once(text, old, new, label):
 # ── Servicio: reconocimiento offline y habilidades locales.
 service_path = root / "app/src/main/java/com/jarvis/personal/JarvisService.kt"
 s = service_path.read_text(encoding="utf-8")
+# The base project loader expects a folder named model-en; the workflow bundles Spanish Vosk in model-es.
+# Point every loader and its diagnostic text at the Spanish model folder used by the build.
+s = s.replace("model-en", "model-es")
 s = s.replace("import android.media.AudioManager\n", "import android.media.AudioManager\nimport android.media.AudioFormat\nimport android.media.AudioRecord\nimport android.media.MediaRecorder\n", 1)
 s = s.replace("import org.vosk.LibVosk\n", "import org.json.JSONObject\nimport org.vosk.LibVosk\nimport org.vosk.Recognizer\n", 1)
 s = s.replace("import java.io.FileOutputStream\n", "import java.io.FileOutputStream\nimport java.net.URLEncoder\n", 1)
@@ -716,6 +719,25 @@ icon.write_text(r'''<?xml version="1.0" encoding="utf-8"?>
 </vector>
 ''', encoding="utf-8")
 
+# Original native reactor emblem: titanium housing, red-gold armor accents and cyan core.
+icon.write_text(r'''<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp" android:height="96dp"
+    android:viewportWidth="96" android:viewportHeight="96">
+    <path android:fillColor="#070A10" android:pathData="M48,2a46,46 0,1 0,0 92a46,46 0,1 0,0 -92" />
+    <path android:fillColor="#7A342B" android:pathData="M48,5L76,21L91,48L76,75L48,91L20,75L5,48L20,21Z" />
+    <path android:fillColor="#1B2631" android:pathData="M48,11L71,24L84,48L71,72L48,85L24,72L11,48L24,24Z" />
+    <path android:fillColor="#E18A56" android:pathData="M48,13a35,35 0,1 0,0 70a35,35 0,1 0,0 -70 M48,18a30,30 0,1 1,0 60a30,30 0,1 1,0 -60" />
+    <path android:fillColor="#0B141D" android:pathData="M48,21a27,27 0,1 0,0 54a27,27 0,1 0,0 -54" />
+    <path android:fillColor="#245267" android:pathData="M48,26a22,22 0,1 0,0 44a22,22 0,1 0,0 -44" />
+    <path android:fillColor="#07131D" android:pathData="M48,31a17,17 0,1 0,0 34a17,17 0,1 0,0 -34" />
+    <path android:fillColor="#31CDEB" android:pathData="M48,34a14,14 0,1 0,0 28a14,14 0,1 0,0 -28" />
+    <path android:fillColor="#A8F2FF" android:pathData="M48,39a9,9 0,1 0,0 18a9,9 0,1 0,0 -18" />
+    <path android:fillColor="#FFFFFF" android:pathData="M48,43a5,5 0,1 0,0 10a5,5 0,1 0,0 -10" />
+    <path android:fillColor="#00000000" android:strokeColor="#F2A16D" android:strokeWidth="2.4" android:strokeLineCap="round" android:pathData="M48,6L48,14 M48,82L48,90 M6,48L14,48 M82,48L90,48 M18,18L24,24 M72,72L78,78 M78,18L72,24 M24,72L18,78" />
+    <path android:fillColor="#00000000" android:strokeColor="#F3F7F9" android:strokeWidth="4.8" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M62,31L62,53C62,65 53,71 42,68C34,66 30,60 31,52" />
+</vector>
+''', encoding="utf-8")
 
 # Ensure the Vosk Android Java API is available to Kotlin compilation.
 gradle_candidates = [root / "app/build.gradle.kts", root / "app/build.gradle"]

@@ -6,6 +6,9 @@ Jarvis conserva el mismo proyecto Android, paquete, repositorio y firma de actua
 
 - Se conserva el micrófono y el reconocimiento local de español (ASR) porque son necesarios para que Jarvis entienda lo que la persona dice.
 - Se conserva la respuesta hablada (TTS) de Android: Jarvis no responde como chat escrito.
+- El modelo español de Vosk se empaqueta dentro de la APK en `app/src/main/assets/model-es`; el servicio busca exactamente esa carpeta y la copia a almacenamiento interno antes de crear el reconocedor.
+- Si Android no puede leer el modelo al iniciar, la pantalla permanece abierta, muestra el estado de arranque y permite volver a intentarlo. No se necesita descargar un segundo modelo después de instalar.
+- La pantalla de inicio usa un reactor y paneles dibujados de forma nativa, sin imágenes remotas ni una interfaz de chat.
 - Se elimina la verificación biométrica del hablante: ya no se comparan huellas de voz ni se exige grabar dos muestras antes de usar la aplicación.
 - Se amplía el turno de escucha para aceptar frases habladas más largas.
 - Se amplía la gramática de activación con frases como «Hola Jarvis», «Oye Jarvis», «Jarvis, ¿estás ahí?», «Jarvis, ¿estás despierto?», «Jarvis, ¿estás activo?» y «Jarvis, ¿me escuchas?». La detección se activa cuando el reconocedor local encuentra el nombre «Jarvis» en la frase.
