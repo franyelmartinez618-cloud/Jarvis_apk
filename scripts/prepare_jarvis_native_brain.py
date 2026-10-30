@@ -119,30 +119,27 @@ for gradle_path in [root / "app/build.gradle.kts", root / "app/build.gradle"]:
         )
         gradle_path.write_text(text, encoding="utf-8")
 
-# The app must no longer ask for consent to download Qwen. Its own native core starts with the service.
-qwen_line = '        val brainFile = File(noBackupFilesDir, "jarvis-brain-qwen3-1.7b.litertlm")'
-first = main.find(qwen_line)
+# Remove any legacy first-run download gate, regardless of indentation or copy version.
+first = main.find("val brainFile = File(noBackupFilesDir")
 if first >= 0:
-    finish = main.find("        val serviceIntent = Intent(this, JarvisService::class.java)", first)
-    if finish < 0:
-        raise SystemExit("No se encontró el arranque del servicio después del antiguo diálogo del modelo.")
-    main = main[:first] + main[finish:]
-
-# The upgrade restart path no longer depends on a one-time model-download flag.
-main = main.replace(
-    '                    val brainFile = File(noBackupFilesDir, "jarvis-brain-qwen3-1.7b.litertlm")\n'
-    '                    val modelAccepted = brainFile.exists() || statePrefs.getBoolean("brain_download_accepted", false)',
-    '                    val modelAccepted = true'
+    finish = main.find("val serviceIntent = Intent(this, JarvisService::class.java)", first)
+    if finish >= 0:
+        line_start = main.rfind("\\n", 0, first) + 1
+        main = main[:line_start] + main[finish - len(main[finish:]) if False else finish:]
+# Drop any leftover file-gating declarations in the upgrade path.
+main = re.sub(r"(?m)^\\s*val brainFile = File\\(noBackupFilesDir,.*\\n", "", main)
+main = re.sub(
+    r"(?m)^\\s*val modelAccepted = brainFile\\.exists\\(\\) \\|\\| statePrefs\\.getBoolean\\(.*\\n",
+    "                    val modelAccepted = true\\n",
+    main
 )
-main = main.replace("jarvis-brain-qwen3-1.7b.litertlm", "jarvis-brain.bin")
-main = main.replace("Qwen3 (aprox. 932 MB, una sola vez)", "el núcleo neuronal propio de JARVIS")
-main = main.replace("Descargar cerebro local", "Iniciar motor propio")
-main = main.replace("DESCARGAR CEREBRO", "INICIAR JARVIS")
-main = main.replace("brain_download_accepted", "native_brain_ready")
-main = main.replace("El modelo se descarga una vez al teléfono.", "Motor propio local · sin modelo lingüístico externo.")
-main = main.replace("El modelo Qwen3 se descarga una vez (aprox. 932 MB) y después las conversaciones se procesan localmente; no se envían a Gemini, ChatGPT ni a otra IA remota.", "El motor conversacional propio de JARVIS se ejecuta localmente. No se descarga Qwen, Llama, Gemma ni otro modelo lingüístico de terceros.")
+main = re.sub(r"(?i)qwen[0-9-]*", "motor neuronal propio", main)
+main = re.sub(r"(?i)litertlm", "", main)
+main = main.replace("Aprox. 932 MB, una sola vez", "sin descargar un modelo externo")
+main = main.replace("El modelo se descarga una vez al teléfono.", "Motor propio local, sin modelo lingüístico externo.")
+main = re.sub(r"(?m)^import java\\.io\\.File\\s*\\n", "", main) if "File(" not in main else main
 if "Qwen" in main or "litertlm" in main:
-    raise SystemExit("Quedó una referencia Qwen/LiteRT en MainActivity.kt.")
+    raise SystemExit("Quedó una referencia Qwen/LiteRT en MainActivity.kt:\\n" + "\\n".join(line for line in main.splitlines() if re.search(r"qwen|litertlm", line, re.I)))
 if "private fun startJarvis()" in main and "val serviceIntent = Intent(this, JarvisService::class.java)" not in main:
     raise SystemExit("Se perdió el inicio del servicio Android.")
 main_path.write_text(main, encoding="utf-8")
