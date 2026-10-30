@@ -713,6 +713,59 @@ class JarvisTools(private val service: JarvisService) : ToolSet {
 }
 ''', encoding="utf-8")
 
+tool_source = tools_path.read_text(encoding="utf-8")
+if "fun setAlarm(" not in tool_source:
+    tool_source = tool_source.replace(
+        '    @Tool(description = "Tell the current phone time.")',
+        r'''    @Tool(description = "Set a phone alarm; the clock app opens and the user confirms saving it.")
+    fun setAlarm(
+        @ToolParam(description = "Hour in 24-hour format, 0 through 23.") hour: Int,
+        @ToolParam(description = "Minute, 0 through 59.") minute: Int,
+        @ToolParam(description = "Alarm label.") label: String
+    ): String = service.setAlarmForModel(hour, minute, label)
+
+    @Tool(description = "Start a countdown timer using the phone clock app.")
+    fun setTimer(
+        @ToolParam(description = "Timer length in seconds, 1 through 86400.") seconds: Int,
+        @ToolParam(description = "Timer label.") label: String
+    ): String = service.setTimerForModel(seconds, label)
+
+    @Tool(description = "Open the phone camera app.")
+    fun openCamera(): String = service.openCameraForModel()
+
+    @Tool(description = "Open maps and search for a place or address.")
+    fun searchMaps(
+        @ToolParam(description = "Place, address or destination.") place: String
+    ): String = service.openMapsForModel(place)
+
+    @Tool(description = "Prepare a calendar event. Android opens the calendar editor; the user reviews and saves it.")
+    fun createCalendarEvent(
+        @ToolParam(description = "Event title.") title: String,
+        @ToolParam(description = "Minutes from now until the event begins.") minutesFromNow: Int,
+        @ToolParam(description = "Duration of the event in minutes.") durationMinutes: Int,
+        @ToolParam(description = "Event notes or location.") note: String
+    ): String = service.createCalendarEventForModel(title, minutesFromNow, durationMinutes, note)
+
+    @Tool(description = "Set media volume from zero to one hundred percent.")
+    fun setMediaVolume(
+        @ToolParam(description = "Volume percentage, zero through 100.") percent: Int
+    ): String = service.setMediaVolumeForModel(percent)
+
+    @Tool(description = "Turn the phone flashlight on or off. Requires the Camera permission.")
+    fun controlFlashlight(
+        @ToolParam(description = "True to turn on, false to turn off.") enabled: Boolean
+    ): String = service.setTorchForModel(enabled)
+
+    @Tool(description = "Set screen brightness from one to one hundred percent. Android may ask for Modify System Settings permission.")
+    fun setScreenBrightness(
+        @ToolParam(description = "Brightness percentage, 1 through 100.") percent: Int
+    ): String = service.setScreenBrightnessForModel(percent)
+
+    @Tool(description = "Tell the current phone time.")''',
+        1
+    )
+    tools_path.write_text(tool_source, encoding="utf-8")
+
 # Add small public wrappers and keep direct launcher path free of the overlay-permission gate.
 if "fun currentTimeForModel()" not in service:
     service = service.replace(
